@@ -306,29 +306,45 @@ Task chi tiet:
   - Logistic Regression.
   - Random Forest.
   - Gradient-Boosted Trees neu du tai nguyen.
+- Toi uu threshold cho bai toan imbalance:
+  - Khong chi dung threshold mac dinh 0.5.
+  - Quet threshold tren predicted probability, vi du 0.01 den 0.99.
+  - Chon threshold theo F1 neu can can bang Precision/Recall.
+  - Ghi them best_threshold, best_precision, best_recall, best_f1 vao ket qua.
+- Thu model phi tuyen cho baseline don nguon:
+  - Random Forest la uu tien tiep theo sau Logistic Regression.
+  - GBT chi chay neu thoi gian va tai nguyen cho phep.
+  - Dung feature importance cua Random Forest de giai thich baseline.
 - Danh gia:
   - Precision.
   - Recall.
   - F1-score.
   - Confusion matrix.
+  - Area under ROC.
+  - Area under PR.
   - Training time.
   - Inference time.
 - Luu ket qua:
   - `reports/metrics/baseline_logs.json`
   - `reports/metrics/baseline_metrics.json`
   - `reports/metrics/baseline_traces.json`
+  - `reports/metrics/baseline_summary.json`
 
 Deliverables:
 
 - Ket qua 3 baseline don nguon.
 - Bang so sanh logs-only, metrics-only, traces-only.
 - Nhan xet nguon du lieu nao manh/yey hon.
+- Ket qua threshold tuning cho tung baseline.
+- Neu kip: ket qua Random Forest don nguon va feature importance.
 
 Tieu chi hoan thanh:
 
 - Co it nhat 3 baseline chay thanh cong.
 - Co bang metric ro rang de dua vao bao cao.
 - Co nhan xet ve uu/nhuoc diem cua tung nguon telemetry.
+- Co threshold tuning hoac giai thich vi sao dung threshold mac dinh.
+- Giu fusion da nguon va graph-enhanced model cho Sprint 5.
 
 ## Sprint 5 - Fusion Da Nguon Va Graph-Enhanced Model
 

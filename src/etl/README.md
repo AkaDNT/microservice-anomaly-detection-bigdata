@@ -52,3 +52,64 @@ data_lake/silver/spans/
 data_lake/silver/trace_edges/
 data_lake/silver/anomalies/
 ```
+
+## Sprint 3 Gold ETL
+
+Build 60-second window features:
+
+```bash
+bash scripts/run_gold_etl.sh
+```
+
+Build with a different window size:
+
+```bash
+bash scripts/run_gold_etl.sh 30
+bash scripts/run_gold_etl.sh 120
+```
+
+Validate gold outputs:
+
+```bash
+bash scripts/validate_gold.sh
+```
+
+Expected gold output:
+
+```text
+data_lake/gold/window_features/
+```
+
+Gold rows use this key:
+
+```text
+case_id, service_name, window_start, window_end
+```
+
+The current gold job creates log, metric, trace, graph, and relaxed anomaly label features.
+
+## Sprint 4 Baseline Models
+
+Train single-source baselines from gold features:
+
+```bash
+bash scripts/run_baseline_models.sh
+```
+
+Expected metric outputs:
+
+```text
+reports/metrics/baseline_logs.json
+reports/metrics/baseline_metrics.json
+reports/metrics/baseline_traces.json
+reports/metrics/baseline_summary.json
+```
+
+The baseline job trains Spark ML Logistic Regression models for logs-only, metrics-only, and traces-only feature groups.
+It also tunes the classification threshold from 0.01 to 0.99 and stores the best F1 threshold in each JSON report.
+
+Optional Random Forest baselines:
+
+```bash
+.venv/bin/spark-submit src/models/train_baselines.py --include-random-forest
+```

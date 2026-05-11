@@ -2,7 +2,7 @@
 
 ## Trang Thai
 
-Trang thai: Da tao artifact/code cho Sprint 2; can chay validation trong WSL sau khi Spark runtime san sang.
+Trang thai: Hoan thanh runtime validation trong WSL.
 
 Sprint 2 tap trung bien raw Train-Ticket telemetry thanh cac bang silver Parquet co schema ro rang:
 
@@ -237,4 +237,16 @@ Sprint 2 dat DoD khi:
 
 ## Ket Luan
 
-Artifact Sprint 2 da san sang. Buoc tiep theo la chay ETL trong WSL, kiem tra logs va sua parser neu gap schema edge case tu file JSON thuc te.
+Sprint 2 da hoan thanh. `bash scripts/run_silver_etl.sh all` va `bash scripts/validate_silver.sh` da chay thanh cong trong WSL.
+
+Ket qua validation luc `2026-05-11 23:21:29 +0700`:
+
+| Bang | Rows | Cases | Ghi chu |
+|---|---:|---:|---|
+| `logs` | 1,148,240 | 10 | Du 10 case |
+| `metrics` | 12,684,274 | 9 | Case 04 khong co monitoring priority JSON |
+| `spans` | 219,252 | 9 | Case 04 khong co Jaeger trace JSON; `MicroRCA` la metrics/RCA CSV, khong phai trace |
+| `trace_edges` | 2,919,729 | 9 | Tao tu parent-child spans |
+| `anomalies` | 103 | 8 | Case 03 va 08 ghi `no anomalies identified`, khong co timestamp event |
+
+Co the chuyen sang Sprint 3: Gold Layer, Windowing, Labels va Feature Engineering.
