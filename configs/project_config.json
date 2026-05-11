@@ -1,0 +1,24 @@
+{
+  "project_name": "microservice-anomaly-big-data",
+  "raw_data_root": "data/raw/train-ticket",
+  "data_lake_root": "data_lake",
+  "bronze_root": "data_lake/bronze/train-ticket",
+  "silver_root": "data_lake/silver",
+  "gold_root": "data_lake/gold",
+  "default_window_seconds": 60,
+  "debug_cases": [
+    "case_03_auth_mongo_5_0_9_20220706",
+    "case_07_order_mongodb_4_2_2_20220712",
+    "case_10_order_springdata_mongodb_2_0_0_20220711"
+  ],
+  "priority_metrics": [
+    "container_cpu_usage_seconds_total",
+    "container_memory_working_set_bytes",
+    "container_network_transmit_packets_total",
+    "node_cpu_seconds_total",
+    "node_memory_MemAvailable_bytes",
+    "node_memory_MemTotal_bytes",
+    "node_namespace_pod_container_container_cpu_usage_seconds_total_sum_irate",
+    "node_namespace_pod_container_container_memory_working_set_bytes"
+  ]
+}
