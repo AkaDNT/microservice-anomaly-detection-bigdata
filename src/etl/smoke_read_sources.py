@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+from typing import Iterable, List
 
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
@@ -15,10 +16,21 @@ def build_spark() -> SparkSession:
     )
 
 
-def find_first(root: Path, pattern: str) -> Path:
-    matches = sorted(root.rglob(pattern))
+def discover_case_roots(raw_root: Path) -> List[Path]:
+    case_roots = sorted(path for path in raw_root.glob("case_*") if path.is_dir())
+    return case_roots or [raw_root]
+
+
+def find_first(roots: Iterable[Path], pattern: str, min_size: int = 0) -> Path:
+    matches = sorted(
+        path
+        for root in roots
+        for path in root.rglob(pattern)
+        if path.is_file() and path.stat().st_size >= min_size
+    )
     if not matches:
-        raise FileNotFoundError(f"No file found for pattern {pattern} under {root}")
+        root_text = ", ".join(str(root) for root in roots)
+        raise FileNotFoundError(f"No file found for pattern {pattern} under {root_text}")
     return matches[0]
 
 
@@ -28,11 +40,12 @@ def main() -> None:
     args = parser.parse_args()
 
     raw_root = Path(args.raw_root)
+    case_roots = discover_case_roots(raw_root)
     spark = build_spark()
 
-    log_file = find_first(raw_root, "LOGS_*_structured.csv")
-    metric_file = find_first(raw_root, "*container_cpu_usage_seconds_total.json")
-    trace_file = find_first(raw_root, "*.json")
+    log_file = find_first(case_roots, "LOGS_*_structured.csv")
+    metric_file = find_first(case_roots, "Monitoring_*/*container_cpu_usage_seconds_total.json")
+    trace_file = find_first(case_roots, "Traces_*/*.json", min_size=100)
 
     logs = spark.read.option("header", True).option("multiLine", False).csv(str(log_file))
     metrics = spark.read.option("multiLine", True).json(str(metric_file))

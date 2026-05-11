@@ -6,7 +6,6 @@ Desktop.ini
 .vscode/
 *.swp
 *.swo
-architecture
 
 # Python
 .venv/
