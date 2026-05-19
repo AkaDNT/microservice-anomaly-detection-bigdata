@@ -11,6 +11,7 @@ RUN_SCAN="${RUN_SCAN:-1}"
 RUN_SILVER="${RUN_SILVER:-1}"
 RUN_GOLD="${RUN_GOLD:-1}"
 RUN_VALIDATE="${RUN_VALIDATE:-1}"
+RUN_SCHEMA_VALIDATE="${RUN_SCHEMA_VALIDATE:-1}"
 RUN_BASELINES="${RUN_BASELINES:-1}"
 RUN_FUSION="${RUN_FUSION:-1}"
 RUN_DASHBOARD="${RUN_DASHBOARD:-1}"
@@ -52,6 +53,10 @@ run_step() {
 
   if [[ "$RUN_VALIDATE" == "1" ]]; then
     run_step validate_gold bash scripts/validate_gold.sh
+  fi
+
+  if [[ "$RUN_SCHEMA_VALIDATE" == "1" ]]; then
+    run_step validate_schemas bash scripts/validate_schemas.sh
   fi
 
   if [[ "$RUN_BASELINES" == "1" ]]; then

@@ -198,3 +198,51 @@ Ket qua validation/model chinh:
 | Da chay end-to-end trong WSL | Done qua `reports/models/pipeline.log` |
 
 Ket luan: Sprint 6 da Done. Co the dung `reports/models/pipeline.log` va `reports/dashboard/dashboard_summary.md` lam bang chung cho bao cao/demo.
+
+## Hardening Sau Sprint 6
+
+Da bo sung cac muc ky thuat de project chac hon:
+
+| Hang muc | Artifact |
+|---|---|
+| Unit test tu dong | `tests/test_dashboard_assets.py` |
+| Airflow retry/alert/timeout | `airflow/dags/train_ticket_pipeline.py` |
+| Model artifact saving | `src/models/train_fusion.py`, `--model-output-dir reports/models/artifacts` |
+| Schema validation | `src/etl/validate_schemas.py`, `scripts/validate_schemas.sh` |
+| CI toi thieu | `.github/workflows/ci.yml` |
+| Streaming replay demo | `scripts/demo_streaming_replay.py`, `architecture/streaming-demo.md` |
+
+Luu y: sau khi them `validate_schemas` va model artifact saving, nen chay lai `bash scripts/run_pipeline.sh` mot lan trong WSL de tao log moi va model artifact folder.
+
+Neu `reports/dashboard/model_comparison.csv` dang bi OS lock, dashboard generator se ghi fallback thanh `reports/dashboard/model_comparison_<timestamp>.csv`.
+
+## Hardening Validation Run
+
+Da chay lai pipeline sau khi bo sung schema validation va model artifact saving.
+
+Log moi nhat:
+
+- `reports/models/pipeline_20260519_220649.log`
+- `reports/models/pipeline.log`
+
+Ket qua:
+
+- `validate_schemas` da pass:
+  - `silver.logs`: 1,148,240 rows, 13 columns.
+  - `silver.metrics`: 12,684,274 rows, 13 columns.
+  - `silver.spans`: 219,252 rows, 18 columns.
+  - `silver.trace_edges`: 2,919,729 rows, 12 columns.
+  - `silver.anomalies`: 103 rows, 9 columns.
+  - `gold.window_features`: 401,806 rows, 40 columns.
+- Model artifact da duoc luu:
+  - `reports/models/artifacts/fusion_selected_logs_metrics_graph_logistic_regression`
+- Dashboard assets da duoc ghi:
+  - `reports/dashboard/model_comparison.csv`
+  - `reports/dashboard/dashboard_summary.md`
+- Fusion best giu nguyen:
+  - Model: LR `selected_logs_metrics_graph`.
+  - Negative ratio: `50:1`.
+  - Threshold: `0.99`.
+  - F1-score: `0.1121`.
+
+Canh bao `Failed to load implementation from dev.ludovic.netlib.blas...` chi la Spark/BLAS native warning, khong lam task fail.

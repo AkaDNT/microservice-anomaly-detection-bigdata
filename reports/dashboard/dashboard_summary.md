@@ -21,15 +21,15 @@ This file is generated from `reports/metrics/*.json` and `reports/models/train_f
 | 1 | fusion_summary_latest | logistic_regression | selected_logs_metrics_graph | 50 | 0.1121 | 0.0779 | 0.2000 | 6 | 71 | 24 |
 | 2 | fusion_log_history | logistic_regression | selected_logs_metrics_graph | 50 | 0.1121 | 0.0779 | 0.2000 | 6 | 71 | 24 |
 | 3 | fusion_log_history | logistic_regression | selected_logs_metrics_graph | 50 | 0.1121 | 0.0779 | 0.2000 | 6 | 71 | 24 |
-| 4 | baseline_summary | logistic_regression | metrics_only | - | 0.0890 | 0.0472 | 0.7667 | 23 | 464 | 7 |
-| 5 | baseline_summary | logistic_regression | logs_only | - | 0.0889 | 0.0533 | 0.2667 | 8 | 142 | 22 |
-| 6 | fusion_log_history | logistic_regression | selected_logs_metrics_trace_latency | 50 | 0.0710 | 0.0432 | 0.2000 | 6 | 133 | 24 |
-| 7 | fusion_log_history | logistic_regression | logs_metrics | 50 | 0.0654 | 0.0345 | 0.6333 | 19 | 532 | 11 |
-| 8 | fusion_log_history | logistic_regression | selected_logs_metrics | 50 | 0.0652 | 0.0344 | 0.6333 | 19 | 534 | 11 |
-| 9 | fusion_log_history | logistic_regression | logs_metrics_traces | - | 0.0558 | 0.0324 | 0.2000 | 6 | 179 | 24 |
-| 10 | fusion_log_history | logistic_regression | logs_metrics_traces_graph | - | 0.0533 | 0.0308 | 0.2000 | 6 | 189 | 24 |
-| 11 | fusion_log_history | logistic_regression | selected_logs_metrics_graph | 20 | 0.0530 | 0.0277 | 0.6000 | 18 | 631 | 12 |
-| 12 | fusion_log_history | logistic_regression | selected_logs_metrics | 20 | 0.0499 | 0.0260 | 0.6333 | 19 | 712 | 11 |
+| 4 | fusion_log_history | logistic_regression | selected_logs_metrics_graph | 50 | 0.1121 | 0.0779 | 0.2000 | 6 | 71 | 24 |
+| 5 | baseline_summary | logistic_regression | metrics_only | - | 0.0890 | 0.0472 | 0.7667 | 23 | 464 | 7 |
+| 6 | baseline_summary | logistic_regression | logs_only | - | 0.0889 | 0.0533 | 0.2667 | 8 | 142 | 22 |
+| 7 | fusion_log_history | logistic_regression | selected_logs_metrics_trace_latency | 50 | 0.0710 | 0.0432 | 0.2000 | 6 | 133 | 24 |
+| 8 | fusion_log_history | logistic_regression | logs_metrics | 50 | 0.0654 | 0.0345 | 0.6333 | 19 | 532 | 11 |
+| 9 | fusion_log_history | logistic_regression | selected_logs_metrics | 50 | 0.0652 | 0.0344 | 0.6333 | 19 | 534 | 11 |
+| 10 | fusion_log_history | logistic_regression | logs_metrics_traces | - | 0.0558 | 0.0324 | 0.2000 | 6 | 179 | 24 |
+| 11 | fusion_log_history | logistic_regression | logs_metrics_traces_graph | - | 0.0533 | 0.0308 | 0.2000 | 6 | 189 | 24 |
+| 12 | fusion_log_history | logistic_regression | selected_logs_metrics_graph | 20 | 0.0530 | 0.0277 | 0.6000 | 18 | 631 | 12 |
 
 ## Suggested Visuals
 

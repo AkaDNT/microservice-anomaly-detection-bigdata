@@ -259,7 +259,7 @@ def train_one_model(
     train_df: DataFrame,
     test_df: DataFrame,
     algorithm: str,
-) -> Dict[str, object]:
+) -> Tuple[Dict[str, object], object]:
     assembler = VectorAssembler(inputCols=feature_cols, outputCol="raw_features", handleInvalid="keep")
     scaler = StandardScaler(inputCol="raw_features", outputCol="features", withMean=False, withStd=True)
     if algorithm == "logistic_regression":
@@ -311,7 +311,7 @@ def train_one_model(
         "metrics": metrics,
         "threshold_tuning": tune_threshold(predictions),
         "feature_importance": feature_importance(feature_cols, model.stages[-1]),
-    }
+    }, model
 
 
 def write_json(path: Path, payload: object) -> None:
@@ -344,12 +344,19 @@ def main() -> None:
         default=50,
         help="Downsample train negatives to this ratio per positive. Use 0 to disable.",
     )
+    parser.add_argument("--model-output-dir", default="reports/models/artifacts")
+    parser.add_argument(
+        "--skip-model-artifacts",
+        action="store_true",
+        help="Do not save Spark ML PipelineModel artifacts.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
     gold_root = Path(args.gold_root or config["gold_root"])
     input_path = gold_root / args.table
     output_dir = Path(args.output_dir)
+    model_output_dir = Path(args.model_output_dir)
     algorithms = parse_csv_arg(args.algorithms)
     feature_set_names = parse_csv_arg(args.feature_sets)
 
@@ -401,8 +408,12 @@ def main() -> None:
             if missing:
                 raise ValueError(f"Missing columns for {name}: {missing}")
 
-            result = train_one_model(name, feature_cols, train_df, test_df, algorithm)
+            result, model = train_one_model(name, feature_cols, train_df, test_df, algorithm)
             result["split"] = split_summary
+            if not args.skip_model_artifacts:
+                artifact_path = model_output_dir / f"fusion_{name}_{algorithm}"
+                model.write().overwrite().save(str(artifact_path))
+                result["model_artifact_path"] = str(artifact_path)
             results.append(result)
             write_json(output_dir / f"fusion_{name}_{algorithm}.json", result)
             print(f"{name} {algorithm}: {json.dumps(result['metrics'], sort_keys=True)}")

@@ -6,6 +6,7 @@ Generated files:
 
 - `model_comparison.csv`: model metrics table sorted by F1-score.
 - `dashboard_summary.md`: compact dashboard summary for report/demo.
+- `model_comparison_<timestamp>.csv`: fallback output when the stable CSV path is locked by the OS.
 
 Regenerate from current metrics and fusion logs:
 

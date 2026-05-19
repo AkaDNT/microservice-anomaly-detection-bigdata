@@ -185,3 +185,21 @@ Airflow DAG:
 ```text
 airflow/dags/train_ticket_pipeline.py
 ```
+
+Validate required silver/gold schemas:
+
+```bash
+bash scripts/validate_schemas.sh
+```
+
+Fusion model artifacts are saved by default under:
+
+```text
+reports/models/artifacts/
+```
+
+Optional streaming replay demo:
+
+```bash
+python scripts/demo_streaming_replay.py
+```

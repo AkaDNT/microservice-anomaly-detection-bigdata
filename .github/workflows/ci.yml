@@ -1,0 +1,37 @@
+name: Big Data Pipeline CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile Python files
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          skip_dirs = {'.git', '.venv', '__pycache__'}
+          for root, dirs, files in os.walk('.'):
+              dirs[:] = [directory for directory in dirs if directory not in skip_dirs]
+              for name in files:
+                  if name.endswith('.py'):
+                      path = Path(root) / name
+                      compile(path.read_text(encoding='utf-8'), str(path), 'exec')
+          print('compile ok')
+          PY
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests

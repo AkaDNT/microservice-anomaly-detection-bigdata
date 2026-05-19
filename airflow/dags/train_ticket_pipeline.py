@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
@@ -18,8 +18,19 @@ FUSION_ARGS = os.environ.get(
 default_args = {
     "owner": "big-data-project",
     "depends_on_past": False,
-    "retries": 0,
+    "retries": 1,
+    "retry_delay": timedelta(minutes=5),
+    "email_on_failure": False,
+    "email_on_retry": False,
 }
+
+
+def log_failure_alert(context: dict) -> None:
+    task_instance = context.get("task_instance")
+    dag_run = context.get("dag_run")
+    task_id = task_instance.task_id if task_instance else "unknown"
+    run_id = dag_run.run_id if dag_run else "unknown"
+    print(f"[ALERT] Airflow task failed: task_id={task_id}, run_id={run_id}")
 
 
 def project_bash(command: str) -> str:
@@ -38,56 +49,85 @@ with DAG(
     scan_dataset = BashOperator(
         task_id="scan_dataset",
         bash_command=project_bash("bash scripts/scan_dataset.sh"),
+        execution_timeout=timedelta(minutes=10),
+        on_failure_callback=log_failure_alert,
     )
 
     build_silver_logs = BashOperator(
         task_id="build_silver_logs",
         bash_command=project_bash("bash scripts/run_silver_etl.sh logs"),
+        execution_timeout=timedelta(minutes=30),
+        on_failure_callback=log_failure_alert,
     )
 
     build_silver_metrics = BashOperator(
         task_id="build_silver_metrics",
         bash_command=project_bash("bash scripts/run_silver_etl.sh metrics"),
+        execution_timeout=timedelta(minutes=45),
+        on_failure_callback=log_failure_alert,
     )
 
     build_silver_traces = BashOperator(
         task_id="build_silver_traces",
         bash_command=project_bash("bash scripts/run_silver_etl.sh traces"),
+        execution_timeout=timedelta(minutes=30),
+        on_failure_callback=log_failure_alert,
     )
 
     build_silver_anomalies = BashOperator(
         task_id="build_silver_anomalies",
         bash_command=project_bash("bash scripts/run_silver_etl.sh anomalies"),
+        execution_timeout=timedelta(minutes=10),
+        on_failure_callback=log_failure_alert,
     )
 
     validate_silver = BashOperator(
         task_id="validate_silver",
         bash_command=project_bash("bash scripts/validate_silver.sh"),
+        execution_timeout=timedelta(minutes=15),
+        on_failure_callback=log_failure_alert,
     )
 
     build_gold_features = BashOperator(
         task_id="build_gold_features",
         bash_command=project_bash("bash scripts/run_gold_etl.sh"),
+        execution_timeout=timedelta(minutes=30),
+        on_failure_callback=log_failure_alert,
     )
 
     validate_gold = BashOperator(
         task_id="validate_gold",
         bash_command=project_bash("bash scripts/validate_gold.sh"),
+        execution_timeout=timedelta(minutes=15),
+        on_failure_callback=log_failure_alert,
+    )
+
+    validate_schemas = BashOperator(
+        task_id="validate_schemas",
+        bash_command=project_bash("bash scripts/validate_schemas.sh"),
+        execution_timeout=timedelta(minutes=15),
+        on_failure_callback=log_failure_alert,
     )
 
     train_baselines = BashOperator(
         task_id="train_baselines",
         bash_command=project_bash("bash scripts/run_baseline_models.sh"),
+        execution_timeout=timedelta(minutes=45),
+        on_failure_callback=log_failure_alert,
     )
 
     train_fusion_graph = BashOperator(
         task_id="train_fusion_graph",
         bash_command=project_bash(f"bash scripts/run_fusion_models.sh reports/models {FUSION_ARGS}"),
+        execution_timeout=timedelta(minutes=30),
+        on_failure_callback=log_failure_alert,
     )
 
     build_dashboard_assets = BashOperator(
         task_id="build_dashboard_assets",
         bash_command=project_bash("python src/reports/build_dashboard_assets.py"),
+        execution_timeout=timedelta(minutes=5),
+        on_failure_callback=log_failure_alert,
     )
 
     silver_tasks = [build_silver_logs, build_silver_metrics, build_silver_traces, build_silver_anomalies]
@@ -95,7 +135,7 @@ with DAG(
     for silver_task in silver_tasks:
         silver_task >> validate_silver
 
-    validate_silver >> build_gold_features >> validate_gold
+    validate_silver >> build_gold_features >> validate_gold >> validate_schemas
 
     for model_task in [train_baselines, train_fusion_graph]:
-        validate_gold >> model_task >> build_dashboard_assets
+        validate_schemas >> model_task >> build_dashboard_assets

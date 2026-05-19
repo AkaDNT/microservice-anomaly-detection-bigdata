@@ -738,8 +738,8 @@ Tieu chi hoan thanh:
 
 ## Backlog Mo Rong Neu Con Thoi Gian
 
-- Them Apache Kafka de replay telemetry nhu stream.
-- Them Apache Flink de tinh online window features.
+- Them Apache Kafka de replay telemetry nhu stream - Co demo JSONL replay trong `scripts/demo_streaming_replay.py` va huong dan `architecture/streaming-demo.md`.
+- Them Apache Flink de tinh online window features - Van la optional extension, da co sketch streaming source.
 - Them Apache Iceberg de quan ly bang lakehouse tot hon.
 - Thu nghiem nhieu kich thuoc window: 30s, 60s, 120s.
 - Thu nghiem anomaly detection khong giam sat:
@@ -758,6 +758,40 @@ Tieu chi hoan thanh:
   - Metrics + traces.
   - Logs + metrics + traces.
   - Logs + metrics + traces + graph.
+
+## Hardening Ky Thuat Da Bo Sung
+
+Nhung muc nay khong bat buoc cho pipeline batch chinh, nhung giup project chac hon khi nop va bao ve:
+
+| Hang muc | Trang thai | Artifact |
+|---|---|---|
+| Unit test tu dong | Done | `tests/test_dashboard_assets.py` |
+| Airflow retry/alert/timeout | Done | `airflow/dags/train_ticket_pipeline.py` |
+| Model artifact saving | Done | `src/models/train_fusion.py`, output `reports/models/artifacts/` khi train |
+| Schema validation nghiem ngat hon | Done | `src/etl/validate_schemas.py`, `scripts/validate_schemas.sh` |
+| CI/CD toi thieu | Done | `.github/workflows/ci.yml` |
+| Streaming demo nhe | Done | `scripts/demo_streaming_replay.py`, `architecture/streaming-demo.md` |
+
+Can chay lai sau hardening:
+
+```bash
+cd /mnt/d/projects/big-data
+bash scripts/run_pipeline.sh
+```
+
+Da chay lai thanh cong sau hardening voi log:
+
+```text
+reports/models/pipeline_20260519_220649.log
+reports/models/pipeline.log
+```
+
+Lan chay moi da co:
+
+- Schema validation step trong pipeline.
+- Model artifact duoi `reports/models/artifacts/`.
+- Dashboard CSV moi trong `reports/dashboard/`.
+- Fusion best giu nguyen F1 `0.1121`.
 
 ## Phan Cong Vai Tro Trong Nhom
 
