@@ -163,8 +163,11 @@ Cot chinh:
 | Cot | Mo ta |
 |---|---|
 | `case_id` | Case folder |
-| `service_name` | Service rut gon |
+| `service_name` | Service dung de gan nhan, uu tien service suy luan tu noi dung anomaly |
+| `source_service_name` | Service rut gon tu ten file anomaly |
+| `inferred_service_name` | Service suy luan tu raw text neu nhan dien duoc |
 | `service_full_name` | Service kem version/config |
+| `trace_id` | Trace id trich tu dong `Span reported` neu co |
 | `anomaly_timestamp` | Timestamp anomaly trich xuat bang regex |
 | `raw_text` | Dong text goc |
 | `source_file` | File goc |
@@ -220,20 +223,21 @@ reports/silver/validate_silver.log
 
 ## Definition Of Done Sprint 2
 
-Sprint 2 dat DoD khi:
+| Tieu chi | Trang thai |
+|---|---|
+| `bash scripts/run_silver_etl.sh logs` chay thanh cong | Done |
+| `bash scripts/run_silver_etl.sh metrics` chay thanh cong voi case co metrics | Done |
+| `bash scripts/run_silver_etl.sh traces` chay thanh cong voi case co traces | Done |
+| `bash scripts/run_silver_etl.sh anomalies` chay thanh cong | Done |
+| Co Parquet `data_lake/silver/logs` | Done |
+| Co Parquet `data_lake/silver/metrics` | Done |
+| Co Parquet `data_lake/silver/spans` | Done |
+| Co Parquet `data_lake/silver/trace_edges` | Done |
+| Co Parquet `data_lake/silver/anomalies` | Done |
+| `bash scripts/validate_silver.sh` in duoc row count va case count | Done |
+| Logs chay ETL/validation nam trong `reports/silver` | Done |
 
-- `bash scripts/run_silver_etl.sh logs` chay thanh cong.
-- `bash scripts/run_silver_etl.sh metrics` chay thanh cong voi case co metrics.
-- `bash scripts/run_silver_etl.sh traces` chay thanh cong voi case co traces.
-- `bash scripts/run_silver_etl.sh anomalies` chay thanh cong.
-- Co cac folder Parquet:
-  - `data_lake/silver/logs`
-  - `data_lake/silver/metrics`
-  - `data_lake/silver/spans`
-  - `data_lake/silver/trace_edges`
-  - `data_lake/silver/anomalies`
-- `bash scripts/validate_silver.sh` in duoc row count va case count cho cac bang silver.
-- Logs chay ETL/validation nam trong `reports/silver`.
+Ket luan: **Sprint 2 Done**.
 
 ## Ket Luan
 
@@ -248,5 +252,12 @@ Ket qua validation luc `2026-05-11 23:21:29 +0700`:
 | `spans` | 219,252 | 9 | Case 04 khong co Jaeger trace JSON; `MicroRCA` la metrics/RCA CSV, khong phai trace |
 | `trace_edges` | 2,919,729 | 9 | Tao tu parent-child spans |
 | `anomalies` | 103 | 8 | Case 03 va 08 ghi `no anomalies identified`, khong co timestamp event |
+
+Bang `silver/anomalies` da duoc rebuild rieng luc `2026-05-19 10:43:57 +0700` de bo sung schema labeling moi:
+
+- `source_service_name`: service lay tu ten file anomaly.
+- `inferred_service_name`: service suy luan tu raw text neu co tin hieu nhu `travel.service`, `preserve.service`, `order.service`.
+- `service_name`: service dung cho gold label, uu tien `inferred_service_name`.
+- `trace_id`: trace id trich tu dong `Span reported` neu co.
 
 Co the chuyen sang Sprint 3: Gold Layer, Windowing, Labels va Feature Engineering.

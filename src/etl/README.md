@@ -87,6 +87,7 @@ case_id, service_name, window_start, window_end
 ```
 
 The current gold job creates log, metric, trace, graph, and relaxed anomaly label features.
+Anomaly labels use a default 120-second buffer around each 60-second window and can use services inferred from anomaly text or services found on the same trace id.
 
 ## Sprint 4 Baseline Models
 
@@ -112,4 +113,75 @@ Optional Random Forest baselines:
 
 ```bash
 .venv/bin/spark-submit src/models/train_baselines.py --include-random-forest
+```
+
+## Sprint 5 Fusion Models
+
+Train fusion and graph-enhanced models from gold features:
+
+```bash
+bash scripts/run_fusion_models.sh
+```
+
+The default Sprint 5 run uses selected logs+metrics feature sets plus lightweight trace/graph variants, with train negative downsampling at `50:1`.
+
+To tune the negative sampling ratio:
+
+```bash
+bash scripts/run_fusion_models.sh --negative-positive-ratio 20
+bash scripts/run_fusion_models.sh reports/models --negative-positive-ratio 20
+```
+
+Expected metric outputs:
+
+```text
+reports/metrics/fusion_logs_metrics_random_forest.json
+reports/metrics/fusion_selected_logs_metrics_random_forest.json
+reports/metrics/fusion_selected_logs_metrics_trace_latency_random_forest.json
+reports/metrics/fusion_selected_logs_metrics_graph_random_forest.json
+reports/metrics/fusion_logs_metrics_logistic_regression.json
+reports/metrics/fusion_selected_logs_metrics_logistic_regression.json
+reports/metrics/fusion_selected_logs_metrics_trace_latency_logistic_regression.json
+reports/metrics/fusion_selected_logs_metrics_graph_logistic_regression.json
+reports/metrics/fusion_summary.json
+```
+
+The original full trace/graph feature sets are still available:
+
+```bash
+bash scripts/run_fusion_models.sh reports/models --feature-sets logs_metrics_traces,logs_metrics_traces_graph
+```
+
+## Sprint 6 Orchestration And Dashboard
+
+Run the lightweight end-to-end pipeline:
+
+```bash
+bash scripts/run_pipeline.sh
+```
+
+The pipeline logs each step with start/end timestamps and writes:
+
+```text
+reports/models/pipeline_<timestamp>.log
+reports/models/pipeline.log
+```
+
+Build dashboard-ready assets from existing metrics and fusion logs:
+
+```bash
+python src/reports/build_dashboard_assets.py
+```
+
+Expected dashboard outputs:
+
+```text
+reports/dashboard/model_comparison.csv
+reports/dashboard/dashboard_summary.md
+```
+
+Airflow DAG:
+
+```text
+airflow/dags/train_ticket_pipeline.py
 ```

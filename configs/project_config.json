@@ -6,6 +6,7 @@
   "silver_root": "data_lake/silver",
   "gold_root": "data_lake/gold",
   "default_window_seconds": 60,
+  "relaxed_label_seconds": 120,
   "debug_cases": [
     "case_03_auth_mongo_5_0_9_20220706",
     "case_07_order_mongodb_4_2_2_20220712",

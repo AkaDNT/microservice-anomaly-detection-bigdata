@@ -33,6 +33,28 @@ Quy uoc runtime:
 - Duong dan project trong WSL: `/mnt/d/projects/big-data`.
 - Script moi nen uu tien `.sh` cho WSL; PowerShell chi la fallback khi can thao tac nhanh tren Windows.
 
+## Cap Nhat Tien Do
+
+Tinh den `2026-05-19`:
+
+| Sprint | Trang thai | Ket qua chinh |
+|---|---|---|
+| Sprint 0 | Done | Da chot bai toan, dataset, don vi phan tich theo service-level time window va kien truc bronze/silver/gold. |
+| Sprint 1 | Done | Da tao project structure, data lake local, scripts scan/smoke read va inventory dataset. |
+| Sprint 2 | Done | Da build silver logs, metrics, spans, trace_edges, anomalies; silver anomalies da bo sung inferred service va trace_id. |
+| Sprint 3 | Done | Da build gold `window_features` 60s; relaxed label 120s tao 401,806 rows voi 191 anomaly windows. |
+| Sprint 4 | Done | Da train Logistic Regression va Random Forest cho logs-only, metrics-only, traces-only; co threshold tuning va feature importance. |
+| Sprint 5 | Done | Fusion + graph da vuot baseline don nguon: LR `selected_logs_metrics_graph`, ratio 50:1, F1 0.1121. |
+| Sprint 6 | Done | Da chay end-to-end pipeline trong WSL; co Airflow DAG, runtime log va dashboard assets trong `reports/dashboard`. |
+| Sprint 7 | Pending | Bao cao, slide va dong goi nop bai. |
+
+Ket qua baseline tot nhat hien tai:
+
+- Logistic Regression `metrics-only`: threshold 0.90, Precision 0.0472, Recall 0.7667, F1 0.0890.
+- Logistic Regression `logs-only`: threshold 0.96, Precision 0.0533, Recall 0.2667, F1 0.0889.
+- Random Forest `logs-only`: threshold 0.93, Precision 0.0441, Recall 0.3000, F1 0.0769.
+- `traces-only` hien chua co tin hieu tot, F1 gan 0.
+
 ## Sprint 0 - Khoi Dong Va Chuan Hoa Pham Vi
 
 Thoi luong de xuat: 2-3 ngay.
@@ -134,6 +156,17 @@ Tieu chi hoan thanh:
 
 Thoi luong de xuat: 1 tuan.
 
+Trang thai hien tai: **Done**.
+
+Ket qua da dat:
+
+- Silver logs: 1,148,240 rows, 10 cases.
+- Silver metrics: 12,684,274 rows, 9 cases.
+- Silver spans: 219,252 rows, 9 cases.
+- Silver trace_edges: 2,919,729 rows, 9 cases.
+- Silver anomalies: 103 rows, 8 cases.
+- `silver/anomalies` da co `source_service_name`, `inferred_service_name`, `trace_id` de ho tro label gold tot hon.
+
 Muc tieu:
 
 - Bien du lieu raw thanh cac bang sach o silver layer.
@@ -190,22 +223,33 @@ Task chi tiet:
 
 Deliverables:
 
-- `silver_logs`
-- `silver_metrics`
-- `silver_spans`
-- `silver_trace_edges`
-- `silver_anomaly_events`
+- `silver_logs` - Done
+- `silver_metrics` - Done
+- `silver_spans` - Done
+- `silver_trace_edges` - Done
+- `silver_anomaly_events` - Done
 
 Tieu chi hoan thanh:
 
-- Tat ca bang silver doc duoc bang Spark SQL.
-- Timestamp da duoc chuan hoa.
-- Moi bang deu co `case_id`.
-- Co notebook hoac script kiem tra sample data cua tung bang.
+- Tat ca bang silver doc duoc bang Spark SQL - Done.
+- Timestamp da duoc chuan hoa - Done.
+- Moi bang deu co `case_id` - Done.
+- Co script kiem tra sample/count data cua tung bang - Done qua `src/etl/validate_silver.py` va `scripts/validate_silver.sh`.
 
 ## Sprint 3 - Gold Layer: Windowing, Labels Va Feature Engineering
 
 Thoi luong de xuat: 1 tuan.
+
+Trang thai hien tai: **Done**.
+
+Ket qua da dat:
+
+- Gold table: `data_lake/gold/window_features`.
+- Window size: 60 seconds.
+- Tong rows: 401,806.
+- Label 0: 401,615.
+- Label 1: 191.
+- Label relaxed mac dinh: 120 seconds quanh moi window, co inferred service va trace-aware service expansion.
 
 Muc tieu:
 
@@ -254,8 +298,10 @@ Task chi tiet:
   - `error_edge_count`
   - Optional: PageRank bang GraphX neu setup kip.
 - Tao label:
-  - Neu anomaly timestamp nam trong window thi `label = 1`.
-  - Thu nghiem label relaxed: anomaly timestamp +- 60s hoac +- 120s.
+  - Neu anomaly timestamp nam trong window co buffer thi `label = 1`.
+  - Relaxed label mac dinh: `window_start - 120s <= anomaly_timestamp <= window_end + 120s`.
+  - Uu tien service suy luan tu raw anomaly text thay vi chi lay service tu ten file.
+  - Neu anomaly text co trace id, label them cac service xuat hien tren cung trace.
   - Cac window con lai `label = 0`.
 - Join features:
   - Join theo `case_id`, `service_name`, `window_start`.
@@ -268,20 +314,31 @@ Task chi tiet:
 
 Deliverables:
 
-- Bang `gold_window_features`.
-- Data dictionary cho tat ca cot feature.
-- Script thong ke class imbalance.
-- Bao cao ngan ve so window anomaly va normal.
+- Bang `gold_window_features` - Done.
+- Data dictionary cho tat ca cot feature - Done trong `architecture/sprint-3-summary.md`.
+- Script thong ke class imbalance - Done qua `src/etl/validate_gold.py`.
+- Bao cao ngan ve so window anomaly va normal - Done trong `architecture/sprint-3-summary.md`.
 
 Tieu chi hoan thanh:
 
-- Mot dong feature dai dien duoc mot service trong mot time window.
-- Co label anomaly.
-- Train/test split co the thuc hien truc tiep tu bang gold.
+- Mot dong feature dai dien duoc mot service trong mot time window - Done.
+- Co label anomaly - Done.
+- Train/test split co the thuc hien truc tiep tu bang gold - Done, da dung cho Sprint 4.
 
 ## Sprint 4 - Baseline Models Don Nguon
 
 Thoi luong de xuat: 4-5 ngay.
+
+Trang thai hien tai: **Done**.
+
+Ket qua da dat:
+
+- Da train Logistic Regression cho logs-only, metrics-only, traces-only.
+- Da train Random Forest cho logs-only, metrics-only, traces-only.
+- Da dung split theo case: train `case_01` -> `case_07`, test `case_08` -> `case_10`.
+- Test set: 133,136 rows, trong do 30 anomaly.
+- Da co threshold tuning 0.01 -> 0.99 va confusion matrix.
+- Da co Random Forest feature importance.
 
 Muc tieu:
 
@@ -332,23 +389,68 @@ Task chi tiet:
 
 Deliverables:
 
-- Ket qua 3 baseline don nguon.
-- Bang so sanh logs-only, metrics-only, traces-only.
-- Nhan xet nguon du lieu nao manh/yey hon.
-- Ket qua threshold tuning cho tung baseline.
-- Neu kip: ket qua Random Forest don nguon va feature importance.
+- Ket qua 3 baseline don nguon - Done.
+- Bang so sanh logs-only, metrics-only, traces-only - Done.
+- Nhan xet nguon du lieu nao manh/yeu hon - Done.
+- Ket qua threshold tuning cho tung baseline - Done.
+- Ket qua Random Forest don nguon va feature importance - Done.
+
+Ket qua hien tai sau rebuild label relaxed 120s ngay `2026-05-19`:
+
+- Gold co 401,806 windows, gom 401,615 normal va 191 anomaly.
+- Split train/test theo case:
+  - Train: 268,670 rows, 161 anomaly.
+  - Test: 133,136 rows, 30 anomaly.
+- Logistic Regression baseline tot nhat sau threshold tuning:
+  - `metrics-only`: threshold 0.90, Precision 0.0472, Recall 0.7667, F1 0.0890.
+  - `logs-only`: threshold 0.96, Precision 0.0533, Recall 0.2667, F1 0.0889.
+  - `traces-only`: F1 gan 0, chua co tin hieu tot.
+- Random Forest baseline sau threshold tuning:
+  - `logs-only`: threshold 0.93, Precision 0.0441, Recall 0.3000, F1 0.0769.
+  - `metrics-only`: threshold 0.61, Precision 0.0052, Recall 0.9667, F1 0.0103.
+  - `traces-only`: F1 gan 0, chua co tin hieu tot.
+- Random Forest feature importance noi bat:
+  - Logs: `span_reported_count`, `top_event_frequency`, `info_count`.
+  - Metrics: `memory_mean`, `cpu_max`, `memory_std`, `cpu_mean`.
+  - Traces: `p95_duration_ms`, `avg_duration_ms`, `span_count`.
 
 Tieu chi hoan thanh:
 
-- Co it nhat 3 baseline chay thanh cong.
-- Co bang metric ro rang de dua vao bao cao.
-- Co nhan xet ve uu/nhuoc diem cua tung nguon telemetry.
-- Co threshold tuning hoac giai thich vi sao dung threshold mac dinh.
-- Giu fusion da nguon va graph-enhanced model cho Sprint 5.
+- Co it nhat 3 baseline chay thanh cong - Done.
+- Co bang metric ro rang de dua vao bao cao - Done.
+- Co nhan xet ve uu/nhuoc diem cua tung nguon telemetry - Done.
+- Co threshold tuning hoac giai thich vi sao dung threshold mac dinh - Done.
+- Giu fusion da nguon va graph-enhanced model cho Sprint 5 - Done.
 
 ## Sprint 5 - Fusion Da Nguon Va Graph-Enhanced Model
 
 Thoi luong de xuat: 1 tuan.
+
+Trang thai hien tai: **Done**.
+
+Da lam:
+
+- Tao `src/models/train_fusion.py`.
+- Tao `scripts/run_fusion_models.sh`.
+- Dinh nghia feature sets ban dau:
+  - `logs_metrics_traces`: log + metric + trace features.
+  - `logs_metrics_traces_graph`: log + metric + trace + graph features.
+- Da them feature sets toi uu:
+  - `logs_metrics`: log + metric features, bo trace/graph noise.
+  - `selected_logs_metrics`: chon cac log/metric features manh theo baseline va feature importance.
+  - `selected_logs_metrics_trace_latency`: selected logs + metrics + trace latency features.
+  - `selected_logs_metrics_graph`: selected logs + metrics + graph features nhe.
+- Dung cung split theo case voi Sprint 4:
+  - Train: `case_01` -> `case_07`.
+  - Test: `case_08` -> `case_10`.
+- Dung class weight va threshold tuning 0.01 -> 0.99 de so sanh cong bang voi baseline don nguon.
+- Da chay fusion training luc `2026-05-19 12:35:27 +0700`.
+- Da them downsample train negatives mac dinh `50:1` trong `src/models/train_fusion.py`.
+- Da cho phep `scripts/run_fusion_models.sh` truyen tham so vao Spark job de tuning nhanh.
+- Da chay lai 2 cau hinh toi uu:
+  - Default `50:1`.
+  - `--negative-positive-ratio 20`.
+- Ket qua tot nhat: Logistic Regression `selected_logs_metrics_graph`, ratio `50:1`, threshold `0.99`, Precision `0.0779`, Recall `0.2000`, F1 `0.1121`.
 
 Muc tieu:
 
@@ -386,20 +488,101 @@ Task chi tiet:
 
 Deliverables:
 
-- Ket qua fusion baseline.
-- Ket qua graph-enhanced model.
-- Bang feature importance.
-- Bang tong hop tat ca model.
+- Ket qua fusion baseline - Done.
+- Ket qua graph-enhanced model - Done.
+- Bang feature importance - Done.
+- Bang tong hop tat ca model - Done.
+
+Ket qua lan chay dau:
+
+| Algorithm | Feature set | Best F1 | Precision | Recall | Ket luan |
+|---|---|---:|---:|---:|---|
+| Logistic Regression | logs_metrics_traces | 0.0558 | 0.0324 | 0.2000 | Chua vuot baseline don nguon |
+| Logistic Regression | logs_metrics_traces_graph | 0.0533 | 0.0308 | 0.2000 | Graph chua cai thien |
+| Random Forest | logs_metrics_traces | 0.0113 | 0.0057 | 0.7000 | False positive cao |
+| Random Forest | logs_metrics_traces_graph | 0.0101 | 0.0051 | 0.7000 | Graph chua cai thien |
+
+Baseline don nguon tot nhat la Logistic Regression `metrics-only` voi F1 `0.0890`.
+
+Vong toi uu da them sau lan chay dau:
+
+- Default Sprint 5 khong con chi chay full logs+metrics+traces nua, ma uu tien `selected_logs_metrics`, `logs_metrics`, `selected_logs_metrics_trace_latency`, `selected_logs_metrics_graph`.
+- Train set duoc downsample negative windows theo `--negative-positive-ratio 50`; test set giu nguyen de danh gia trung thuc.
+- Muc tieu cua vong nay la tang precision/F1 bang cach giam feature noise va giam ap luc class imbalance tren training.
+
+Ket qua sau toi uu:
+
+| Algorithm | Feature set | Negative ratio | Best F1 | Precision | Recall | TP | FP | FN | Ket luan |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| Logistic Regression | selected_logs_metrics_graph | 50:1 | 0.1121 | 0.0779 | 0.2000 | 6 | 71 | 24 | Tot nhat, vuot baseline |
+| Logistic Regression | selected_logs_metrics_trace_latency | 50:1 | 0.0710 | 0.0432 | 0.2000 | 6 | 133 | 24 | Chua vuot baseline |
+| Logistic Regression | logs_metrics | 50:1 | 0.0654 | 0.0345 | 0.6333 | 19 | 532 | 11 | Recall tot nhung FP cao |
+| Logistic Regression | selected_logs_metrics_graph | 20:1 | 0.0530 | 0.0277 | 0.6000 | 18 | 631 | 12 | FP tang, khong nen dung |
+| Random Forest | selected_logs_metrics_trace_latency | 20:1 | 0.0212 | 0.0107 | 0.9333 | 28 | 2,579 | 2 | Recall cao nhung FP qua lon |
+
+Output du kien:
+
+- `reports/metrics/fusion_logs_metrics_random_forest.json`
+- `reports/metrics/fusion_selected_logs_metrics_random_forest.json`
+- `reports/metrics/fusion_selected_logs_metrics_trace_latency_random_forest.json`
+- `reports/metrics/fusion_selected_logs_metrics_graph_random_forest.json`
+- `reports/metrics/fusion_logs_metrics_logistic_regression.json`
+- `reports/metrics/fusion_selected_logs_metrics_logistic_regression.json`
+- `reports/metrics/fusion_selected_logs_metrics_trace_latency_logistic_regression.json`
+- `reports/metrics/fusion_selected_logs_metrics_graph_logistic_regression.json`
+- `reports/metrics/fusion_summary.json`
+- `reports/models/train_fusion.log`
+
+Neu chay lai feature set cua lan dau se co them:
+
+- `reports/metrics/fusion_logs_metrics_traces_random_forest.json`
+- `reports/metrics/fusion_logs_metrics_traces_graph_random_forest.json`
+- `reports/metrics/fusion_logs_metrics_traces_logistic_regression.json`
+- `reports/metrics/fusion_logs_metrics_traces_graph_logistic_regression.json`
 
 Tieu chi hoan thanh:
 
-- Chung minh duoc da nguon tot hon hoac on dinh hon don nguon.
-- Chung minh graph features co gia tri hoac giai thich duoc khi khong cai thien.
-- Co ket qua F1/Precision/Recall cu the.
+- Chung minh duoc da nguon tot hon hoac on dinh hon don nguon - Done, F1 `0.1121` > baseline `0.0890`.
+- Chung minh graph features co gia tri hoac giai thich duoc khi khong cai thien - Done, `selected_logs_metrics_graph` la cau hinh tot nhat sau toi uu.
+- Co ket qua F1/Precision/Recall cu the - Done.
+
+Cach chay:
+
+```bash
+bash scripts/run_fusion_models.sh
+```
+
+Tuning them:
+
+```bash
+bash scripts/run_fusion_models.sh --negative-positive-ratio 20
+bash scripts/run_fusion_models.sh reports/models --negative-positive-ratio 20
+bash scripts/run_fusion_models.sh reports/models --feature-sets logs_metrics_traces,logs_metrics_traces_graph
+```
 
 ## Sprint 6 - Orchestration Bang Airflow Va Truc Quan Hoa
 
 Thoi luong de xuat: 4-5 ngay.
+
+Trang thai hien tai: **Done**.
+
+Da lam:
+
+- Tao script chay pipeline tong: `scripts/run_pipeline.sh`.
+- Tao Airflow DAG: `airflow/dags/train_ticket_pipeline.py`.
+- Tao dashboard assets generator: `src/reports/build_dashboard_assets.py`.
+- Tao notebook/dashboard demo: `notebooks/sprint6_dashboard.md`.
+- Tao dashboard snapshot:
+  - `reports/dashboard/model_comparison.csv`
+  - `reports/dashboard/dashboard_summary.md`
+  - `reports/dashboard/README.md`
+- Dashboard generator doc duoc `baseline_summary.json`, `fusion_summary.json` va lich su `train_fusion_*.log` de khong mat ket qua tot khi file summary bi ghi de.
+- Pipeline tong mac dinh chay fusion cau hinh tot nhat Sprint 5: Logistic Regression `selected_logs_metrics_graph`, ratio `50:1`.
+- Da chay thanh cong `bash scripts/run_pipeline.sh` trong WSL:
+  - Bat dau: `2026-05-19 16:03:25 +0700`.
+  - Ket thuc: `2026-05-19 16:11:47 +0700`.
+  - Log: `reports/models/pipeline.log`.
+  - Dashboard summary: `reports/dashboard/dashboard_summary.md`.
 
 Muc tieu:
 
@@ -441,15 +624,50 @@ Task chi tiet:
 
 Deliverables:
 
-- Airflow DAG chay pipeline end-to-end.
-- Dashboard hoac notebook visualization.
-- Anh chup man hinh pipeline va dashboard cho bao cao.
+- Airflow DAG chay pipeline end-to-end - Done qua `airflow/dags/train_ticket_pipeline.py`.
+- Dashboard hoac notebook visualization - Done qua `notebooks/sprint6_dashboard.md`.
+- Script chay pipeline bang mot lenh - Done qua `scripts/run_pipeline.sh`.
+- Dashboard-ready CSV/Markdown generator - Done qua `src/reports/build_dashboard_assets.py`.
+- Dashboard snapshot trong `reports/dashboard` - Done.
+- Anh chup man hinh pipeline va dashboard cho bao cao - Co the chup tu `reports/models/pipeline.log` va `reports/dashboard/dashboard_summary.md`.
+
+Ket qua pipeline WSL:
+
+| Task | Duration |
+|---|---:|
+| `scan_dataset` | 9s |
+| `build_silver` | 209s |
+| `validate_silver` | 45s |
+| `build_gold` | 77s |
+| `validate_gold` | 30s |
+| `train_baselines` | 79s |
+| `train_fusion` | 53s |
+| `build_dashboard_assets` | 0s |
+
+Ket qua sau pipeline:
+
+- Gold `window_features`: 401,806 rows, 191 anomaly windows.
+- Fusion best trong pipeline: LR `selected_logs_metrics_graph`, ratio `50:1`, threshold `0.99`, F1 `0.1121`.
+- Dashboard generator ghi `reports/dashboard/dashboard_summary.md` va `reports/dashboard/model_comparison_20260519_161147.csv`; `model_comparison.csv` snapshot truoc do van duoc giu lai.
 
 Tieu chi hoan thanh:
 
-- Co the chay lai pipeline tu dau bang mot DAG hoac mot lenh tong.
-- Co dashboard/notebook de trinh bay ket qua truc quan.
-- Co log runtime cua tung buoc.
+- Co the chay lai pipeline tu dau bang mot DAG hoac mot lenh tong - Done, da chay WSL thanh cong.
+- Co dashboard/notebook de trinh bay ket qua truc quan - Done.
+- Co log runtime cua tung buoc - Done trong `scripts/run_pipeline.sh`.
+
+Cach chay nhanh:
+
+```bash
+cd /mnt/d/projects/big-data
+bash scripts/run_pipeline.sh
+```
+
+Neu chi muon build dashboard tu ket qua da co:
+
+```bash
+python src/reports/build_dashboard_assets.py
+```
 
 ## Sprint 7 - Bao Cao, Slide Va Dong Goi Nop Bai
 

@@ -97,7 +97,15 @@ Graph features duoc tinh lightweight bang Spark SQL aggregation tren `silver/tra
 
 - `label`
 
-Label hien tai la relaxed label theo `case_id`, `service_name`, va `anomaly_timestamp +- 60s`.
+Label hien tai la relaxed label theo `case_id`, `service_name`, va timestamp anomaly.
+Gold gan `label = 1` khi `anomaly_timestamp` nam trong khoang:
+
+```text
+window_start - relaxed_label_seconds <= anomaly_timestamp <= window_end + relaxed_label_seconds
+```
+
+Gia tri mac dinh cua `relaxed_label_seconds` la 120 giay.
+Service label duoc lay tu `silver/anomalies.service_name`, trong do silver uu tien service suy luan tu raw anomaly text; neu anomaly co `trace_id`, gold cung label cac service xuat hien tren cung trace.
 
 ## Cach Chay Trong WSL
 
@@ -125,15 +133,41 @@ reports/gold/validate_gold.log
 
 ## Definition Of Done Sprint 3
 
-Sprint 3 dat DoD khi:
+| Tieu chi | Trang thai |
+|---|---|
+| `bash scripts/run_gold_etl.sh` chay thanh cong | Done |
+| Co folder Parquet `data_lake/gold/window_features` | Done |
+| `bash scripts/validate_gold.sh` in duoc row count, case count va label distribution | Done voi lan validate cu; can rerun de cap nhat log moi |
+| Bang gold co du key `case_id`, `service_name`, `window_start`, `window_end` | Done |
+| Bang gold co `label` va cac feature log/metric/trace/graph co ban | Done |
 
-- `bash scripts/run_gold_etl.sh` chay thanh cong.
-- Co folder Parquet `data_lake/gold/window_features`.
-- `bash scripts/validate_gold.sh` in duoc row count, case count va label distribution.
-- Bang gold co du key `case_id`, `service_name`, `window_start`, `window_end`.
-- Bang gold co `label` va cac feature log/metric/trace/graph co ban.
+Ket luan: **Sprint 3 Done**.
+
+## Ket Qua Rebuild Label Relaxed 120s
+
+Gold ETL rebuild luc `2026-05-19 10:45:30 +0700` voi:
+
+```text
+window_seconds=60
+relaxed_label_seconds=120
+```
+
+Ket qua build trong `reports/gold/build_gold.log`:
+
+| Metric | Gia tri |
+|---|---:|
+| Tong rows | 401,806 |
+| Label 0 | 401,615 |
+| Label 1 | 191 |
+
+So label 1 tang tu 40 len 191 sau khi:
+
+- Noi buffer label len 120 giay quanh moi window.
+- Uu tien service suy luan tu raw anomaly text.
+- Bo sung label cho service xuat hien tren cung trace id khi anomaly co `trace_id`.
 
 ## Luu Y
 
 - Mot so case thieu modality la binh thuong: case 04 khong co Jaeger trace JSON; case 03 va 08 khong co anomaly timestamp vi file ghi `no anomalies identified`.
-- Label hien tai la baseline de tien hanh Sprint 4/5; co the thu strict label hoac relaxed +-120s neu can so sanh.
+- Label hien tai la baseline de tien hanh Sprint 4/5; co the so sanh strict label, relaxed 60s va relaxed 120s neu can ablation.
+- `reports/gold/validate_gold.log` hien van la log cu ngay `2026-05-12`; ket qua label moi duoc xac nhan trong `reports/gold/build_gold.log`.

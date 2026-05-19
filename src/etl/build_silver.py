@@ -357,14 +357,47 @@ def build_anomalies(spark: SparkSession, raw_root: Path, cases: List[str], silve
     anomalies = spark.read.text(files)
     anomalies = with_path_columns(anomalies)
 
+    raw_lower = F.lower(F.col("value"))
+    inferred_service = (
+        F.when(raw_lower.contains("admin basic info") | raw_lower.contains("adminbasic"), F.lit("ts-admin-basic-info-service"))
+        .when(raw_lower.contains("admin travel") | raw_lower.contains("admintravel"), F.lit("ts-admin-travel-service"))
+        .when(raw_lower.contains("admin user") | raw_lower.contains("adminuser"), F.lit("ts-admin-user-service"))
+        .when(raw_lower.contains("preserve other service") | raw_lower.contains("preserve other"), F.lit("ts-preserve-other-service"))
+        .when(raw_lower.contains("preserve service") | raw_lower.contains("preserve."), F.lit("ts-preserve-service"))
+        .when(raw_lower.contains("order other service") | raw_lower.contains("orderother"), F.lit("ts-order-other-service"))
+        .when(raw_lower.contains("order service") | raw_lower.contains("order."), F.lit("ts-order-service"))
+        .when(raw_lower.contains("travel2") | raw_lower.contains("travel 2"), F.lit("ts-travel2-service"))
+        .when(raw_lower.contains("travel service") | raw_lower.contains("travel."), F.lit("ts-travel-service"))
+        .when(raw_lower.contains("route service") | raw_lower.contains("route."), F.lit("ts-route-service"))
+        .when(raw_lower.contains("contacts service") | raw_lower.contains("contacts."), F.lit("ts-contacts-service"))
+        .when(raw_lower.contains("basic service") | raw_lower.contains("basic."), F.lit("ts-basic-service"))
+        .when(raw_lower.contains("station service") | raw_lower.contains("station."), F.lit("ts-station-service"))
+        .when(raw_lower.contains("ticketinfo service") | raw_lower.contains("ticketinfo."), F.lit("ts-ticketinfo-service"))
+        .when(raw_lower.contains("train service") | raw_lower.contains("train."), F.lit("ts-train-service"))
+    )
+
     anomalies = (
         anomalies.withColumn("service_full_name", F.regexp_extract("source_file", r"potentialAnomalies_(.+)\.txt$", 1))
-        .withColumn("service_name", F.split("service_full_name", "_").getItem(0))
+        .withColumn("source_service_name", F.split("service_full_name", "_").getItem(0))
         .withColumn("timestamp_text", F.regexp_extract("value", r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})", 1))
         .where(F.col("timestamp_text") != "")
         .withColumn("anomaly_timestamp", F.to_timestamp("timestamp_text", "yyyy-MM-dd HH:mm:ss.SSS"))
+        .withColumn("inferred_service_name", inferred_service)
+        .withColumn("service_name", F.coalesce(F.col("inferred_service_name"), F.col("source_service_name")))
+        .withColumn("trace_id", F.regexp_extract("value", r"Span reported:\s*([0-9a-fA-F]+):", 1))
+        .withColumn("trace_id", F.when(F.col("trace_id") != "", F.col("trace_id")))
         .withColumn("raw_text", F.col("value"))
-        .select("case_id", "service_name", "service_full_name", "anomaly_timestamp", "raw_text", "source_file")
+        .select(
+            "case_id",
+            "service_name",
+            "source_service_name",
+            "inferred_service_name",
+            "service_full_name",
+            "trace_id",
+            "anomaly_timestamp",
+            "raw_text",
+            "source_file",
+        )
     )
 
     output_path = str(Path(silver_root) / "anomalies")

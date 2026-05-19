@@ -166,14 +166,54 @@ def add_labels(
     if not table_exists(anomalies_path):
         return features.withColumn("label", F.lit(0))
 
-    anomalies = (
-        spark.read.parquet(str(anomalies_path))
-        .select(
-            F.col("case_id").alias("anomaly_case_id"),
-            F.col("service_name").alias("anomaly_service_name"),
-            F.col("anomaly_timestamp"),
+    raw_anomalies = spark.read.parquet(str(anomalies_path)).where(F.col("anomaly_timestamp").isNotNull())
+    anomaly_cols = raw_anomalies.columns
+    anomaly_select = [
+        F.col("case_id").alias("anomaly_case_id"),
+        F.col("service_name").alias("anomaly_service_name"),
+        F.col("anomaly_timestamp"),
+    ]
+    if "trace_id" in anomaly_cols:
+        anomaly_select.append(F.col("trace_id"))
+    else:
+        anomaly_select.append(F.lit(None).cast("string").alias("trace_id"))
+
+    direct_anomalies = raw_anomalies.select(*anomaly_select).where(F.col("anomaly_service_name").isNotNull())
+    anomalies = direct_anomalies
+
+    spans_path = silver_root / "spans"
+    if table_exists(spans_path):
+        trace_services = (
+            spark.read.parquet(str(spans_path))
+            .select(
+                F.col("case_id").alias("span_case_id"),
+                F.col("trace_id").alias("span_trace_id"),
+                F.col("service_name").alias("span_service_name"),
+            )
+            .where(F.col("span_trace_id").isNotNull() & F.col("span_service_name").isNotNull())
+            .distinct()
         )
-        .where(F.col("anomaly_timestamp").isNotNull())
+        trace_anomalies = (
+            direct_anomalies.where(F.col("trace_id").isNotNull())
+            .join(
+                trace_services,
+                (F.col("anomaly_case_id") == F.col("span_case_id"))
+                & (F.col("trace_id") == F.col("span_trace_id")),
+                "inner",
+            )
+            .select(
+                "anomaly_case_id",
+                F.col("span_service_name").alias("anomaly_service_name"),
+                "anomaly_timestamp",
+                "trace_id",
+            )
+        )
+        anomalies = direct_anomalies.unionByName(trace_anomalies).distinct()
+
+    anomalies = (
+        anomalies.select("anomaly_case_id", "anomaly_service_name", "anomaly_timestamp")
+        .where(F.col("anomaly_service_name").isNotNull())
+        .distinct()
     )
 
     feature_cols = features.columns
@@ -185,8 +225,10 @@ def add_labels(
             (F.col("f.case_id") == F.col("a.anomaly_case_id"))
             & (F.col("f.service_name") == F.col("a.anomaly_service_name"))
             & (
-                F.abs(F.unix_timestamp(F.col("f.window_start")) - F.unix_timestamp(F.col("a.anomaly_timestamp")))
-                <= F.lit(relaxed_seconds)
+                F.col("a.anomaly_timestamp").between(
+                    F.col("f.window_start") - F.expr(f"INTERVAL {relaxed_seconds} SECONDS"),
+                    F.col("f.window_end") + F.expr(f"INTERVAL {relaxed_seconds} SECONDS"),
+                )
             ),
             "left",
         )
@@ -217,18 +259,21 @@ def main() -> None:
     parser.add_argument("--silver-root", default=None)
     parser.add_argument("--gold-root", default=None)
     parser.add_argument("--window-seconds", type=int, default=None)
-    parser.add_argument("--relaxed-label-seconds", type=int, default=60)
+    parser.add_argument("--relaxed-label-seconds", type=int, default=None)
     args = parser.parse_args()
 
     config = load_config(args.config)
     silver_root = Path(args.silver_root or config["silver_root"])
     gold_root = Path(args.gold_root or config["gold_root"])
     window_seconds = args.window_seconds or int(config.get("default_window_seconds", 60))
+    relaxed_label_seconds = args.relaxed_label_seconds
+    if relaxed_label_seconds is None:
+        relaxed_label_seconds = int(config.get("relaxed_label_seconds", 120))
 
     print(f"silver_root={silver_root}")
     print(f"gold_root={gold_root}")
     print(f"window_seconds={window_seconds}")
-    print(f"relaxed_label_seconds={args.relaxed_label_seconds}")
+    print(f"relaxed_label_seconds={relaxed_label_seconds}")
 
     spark = build_spark()
     spark.sparkContext.setLogLevel("WARN")
@@ -241,7 +286,7 @@ def main() -> None:
     ]
 
     features = join_feature_frames(frames)
-    features = add_labels(spark, features, silver_root, args.relaxed_label_seconds)
+    features = add_labels(spark, features, silver_root, relaxed_label_seconds)
     features = fill_feature_nulls(features).persist()
 
     output_path = gold_root / "window_features"

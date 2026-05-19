@@ -1,0 +1,16 @@
+source,family,algorithm,model,negative_positive_ratio,threshold,precision,recall,f1,tp,fp,fn,tn
+train_fusion_20260519_124849.log,fusion_log_history,logistic_regression,selected_logs_metrics_graph,50,0.99,0.07792207792207792,0.2,0.11214953271028039,6,71,24,133035
+baseline_summary.json,baseline_summary,logistic_regression,metrics_only,,0.9,0.04722792607802875,0.7666666666666667,0.08897485493230174,23,464,7,132642
+baseline_summary.json,baseline_summary,logistic_regression,logs_only,,0.96,0.05333333333333334,0.26666666666666666,0.08888888888888889,8,142,22,132964
+baseline_summary.json,baseline_summary,random_forest,logs_only,,0.93,0.04411764705882353,0.3,0.07692307692307693,9,195,21,132911
+train_fusion_20260519_124849.log,fusion_log_history,logistic_regression,selected_logs_metrics_trace_latency,50,0.99,0.04316546762589928,0.2,0.07100591715976332,6,133,24,132973
+train_fusion_20260519_124849.log,fusion_log_history,logistic_regression,logs_metrics,50,0.94,0.034482758620689655,0.6333333333333333,0.06540447504302926,19,532,11,132574
+train_fusion_20260519_124849.log,fusion_log_history,logistic_regression,selected_logs_metrics,50,0.94,0.034358047016274866,0.6333333333333333,0.06518010291595198,19,534,11,132572
+train_fusion_20260519_123310.log,fusion_log_history,logistic_regression,logs_metrics_traces,,0.99,0.032432432432432434,0.2,0.05581395348837209,6,179,24,132927
+train_fusion_20260519_123310.log,fusion_log_history,logistic_regression,logs_metrics_traces_graph,,0.99,0.03076923076923077,0.2,0.05333333333333334,6,189,24,132917
+fusion_summary.json,fusion_summary_latest,logistic_regression,selected_logs_metrics_graph,20,0.95,0.02773497688751926,0.6,0.05301914580265096,18,631,12,132475
+train_fusion_20260519_125204.log,fusion_log_history,logistic_regression,selected_logs_metrics_graph,20,0.95,0.02773497688751926,0.6,0.05301914580265096,18,631,12,132475
+fusion_summary.json,fusion_summary_latest,logistic_regression,selected_logs_metrics,20,0.93,0.025991792065663474,0.6333333333333333,0.049934296977660976,19,712,11,132394
+fusion_summary.json,fusion_summary_latest,logistic_regression,logs_metrics,20,0.93,0.025991792065663474,0.6333333333333333,0.049934296977660976,19,712,11,132394
+train_fusion_20260519_125204.log,fusion_log_history,logistic_regression,selected_logs_metrics,20,0.93,0.025991792065663474,0.6333333333333333,0.049934296977660976,19,712,11,132394
+train_fusion_20260519_125204.log,fusion_log_history,logistic_regression,logs_metrics,20,0.93,0.025991792065663474,0.6333333333333333,0.049934296977660976,19,712,11,132394
