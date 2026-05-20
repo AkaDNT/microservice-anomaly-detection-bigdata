@@ -185,7 +185,7 @@ def train_one_baseline(
     train_df: DataFrame,
     test_df: DataFrame,
     algorithm: str,
-) -> Dict[str, object]:
+) -> Tuple[Dict[str, object], object]:
     assembler = VectorAssembler(inputCols=feature_cols, outputCol="raw_features", handleInvalid="keep")
     scaler = StandardScaler(inputCol="raw_features", outputCol="features", withMean=False, withStd=True)
     if algorithm == "logistic_regression":
@@ -238,7 +238,7 @@ def train_one_baseline(
         "metrics": metrics,
         "threshold_tuning": threshold_metrics,
         "feature_importance": feature_importance(feature_cols, model.stages[-1]),
-    }
+    }, model
 
 
 def write_json(path: Path, payload: object) -> None:
@@ -254,6 +254,12 @@ def main() -> None:
     parser.add_argument("--gold-root", default=None)
     parser.add_argument("--table", default="window_features")
     parser.add_argument("--output-dir", default="reports/metrics")
+    parser.add_argument("--model-output-dir", default="reports/models/artifacts")
+    parser.add_argument(
+        "--skip-model-artifacts",
+        action="store_true",
+        help="Do not save Spark ML PipelineModel artifacts.",
+    )
     parser.add_argument("--train-cases", default=None, help="Comma-separated case_id list. Default: case_01 to case_07.")
     parser.add_argument(
         "--include-random-forest",
@@ -266,6 +272,7 @@ def main() -> None:
     gold_root = Path(args.gold_root or config["gold_root"])
     input_path = gold_root / args.table
     output_dir = Path(args.output_dir)
+    model_output_dir = Path(args.model_output_dir)
 
     print(f"gold_table={input_path}")
     print(f"output_dir={output_dir}")
@@ -308,8 +315,12 @@ def main() -> None:
             if missing:
                 raise ValueError(f"Missing columns for {name} baseline: {missing}")
 
-            result = train_one_baseline(name, feature_cols, train_df, test_df, algorithm)
+            result, model = train_one_baseline(name, feature_cols, train_df, test_df, algorithm)
             result["split"] = split_summary
+            if not args.skip_model_artifacts:
+                artifact_path = model_output_dir / f"baseline_{name}_only_{algorithm}"
+                model.write().overwrite().save(str(artifact_path))
+                result["model_artifact_path"] = str(artifact_path)
             results.append(result)
             suffix = "" if algorithm == "logistic_regression" else f"_{algorithm}"
             write_json(output_dir / f"baseline_{name}{suffix}.json", result)

@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo phát hiện anomaly realtime logs-only bằng Kafka</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --text: #18202a;
+      --muted: #5b6675;
+      --line: #d8dee8;
+      --panel: #ffffff;
+      --code: #111827;
+      --code-text: #e5e7eb;
+      --accent: #0f766e;
+      --warn: #92400e;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.2;
+      margin: 0 0 12px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 22px;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+
+    h3 {
+      font-size: 18px;
+      margin-top: 22px;
+    }
+
+    p {
+      margin: 8px 0 14px;
+    }
+
+    ul,
+    ol {
+      margin-top: 8px;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code {
+      background: #e8edf3;
+      border-radius: 4px;
+      padding: 2px 5px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 0.95em;
+    }
+
+    pre {
+      margin: 12px 0 18px;
+      background: var(--code);
+      color: var(--code-text);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 17px;
+      max-width: 860px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      margin: 16px 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-right: 8px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #ccfbf1;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: #ecfdf5;
+      padding: 12px 14px;
+      margin: 14px 0;
+    }
+
+    .warn {
+      border-left-color: var(--warn);
+      background: #fffbeb;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      background: var(--panel);
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef2f7;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Demo phát hiện anomaly realtime logs-only bằng Kafka</h1>
+    <p class="lead">
+      Tài liệu này gồm các bước demo realtime anomaly alert bằng Kafka + Spark Structured Streaming
+      cho project Train-Ticket. Demo dùng logs-only model artifact đã train từ Sprint 4.
+    </p>
+
+    <section class="card">
+      <span class="badge">Mục tiêu</span>
+      <p>
+        Replay structured log từ dataset Train-Ticket vào Kafka topic <code>train-ticket-logs</code>,
+        Spark streaming đọc log theo window 60 giây, tính logs-only features, load model
+        <code>baseline_logs_only_logistic_regression</code>, sau đó đẩy alert sang topic
+        <code>train-ticket-alerts</code> nếu probability vượt threshold.
+      </p>
+    </section>
+
+    <h2>1. Điều kiện trước khi demo</h2>
+    <ul>
+      <li>Chạy trong WSL Ubuntu tại thư mục <code>/mnt/d/projects/big-data</code>.</li>
+      <li>Kafka đang chạy tại <code>localhost:9092</code>.</li>
+      <li>Đã cài Python dependency <code>kafka-python</code> trong virtualenv hoặc môi trường đang dùng.</li>
+      <li>Đã có model artifact: <code>reports/models/artifacts/baseline_logs_only_logistic_regression</code>.</li>
+      <li>Nếu chưa có artifact, chạy lại baseline training trước khi demo.</li>
+    </ul>
+
+    <pre><code>cd /mnt/d/projects/big-data
+bash scripts/run_baseline_models.sh</code></pre>
+
+    <h2>2. Start Kafka server bằng KRaft mode</h2>
+    <p>
+      Nếu Kafka chưa chạy, mở một terminal riêng và start Kafka bằng KRaft mode.
+      Bước format storage chỉ cần làm lần đầu sau khi giải nén/cài Kafka hoặc khi muốn tạo lại cluster mới.
+    </p>
+
+    <h3>Vào thư mục Kafka</h3>
+    <pre><code>cd ~/kafka</code></pre>
+
+    <h3>Tạo cluster id</h3>
+    <pre><code>KAFKA_CLUSTER_ID="$(bin/kafka-storage.sh random-uuid)"
+echo $KAFKA_CLUSTER_ID</code></pre>
+
+    <h3>Format Kafka storage</h3>
+    <pre><code>bin/kafka-storage.sh format \
+  --standalone \
+  -t "$KAFKA_CLUSTER_ID" \
+  -c config/server.properties</code></pre>
+
+    <h3>Start Kafka server</h3>
+    <pre><code>bin/kafka-server-start.sh config/server.properties</code></pre>
+
+    <div class="note warn">
+      <strong>Lưu ý:</strong> Terminal start Kafka server phải được giữ đang chạy trong lúc demo.
+      Nếu storage đã format rồi, lần sau thường chỉ cần chạy lệnh start server.
+    </div>
+
+    <h2>3. Tạo Kafka topics</h2>
+    <p>Chỉ cần tạo một lần. Nếu topic đã tồn tại thì Kafka sẽ báo đã có, có thể bỏ qua.</p>
+
+    <pre><code>cd ~/kafka
+bin/kafka-topics.sh \
+  --bootstrap-server localhost:9092 \
+  --create \
+  --topic train-ticket-logs \
+  --partitions 1 \
+  --replication-factor 1
+
+bin/kafka-topics.sh \
+  --bootstrap-server localhost:9092 \
+  --create \
+  --topic train-ticket-alerts \
+  --partitions 1 \
+  --replication-factor 1</code></pre>
+
+    <h2>4. Demo chính bằng 3 terminal</h2>
+    <div class="note">
+      Thứ tự nên dùng: Terminal 1 chạy Spark alert job, Terminal 2 nghe alert, Terminal 3 mới replay logs.
+    </div>
+
+    <h3>Terminal 1 - Spark streaming alert job</h3>
+    <pre><code>cd /mnt/d/projects/big-data
+bash scripts/run_logs_only_streaming_alerts.sh \
+  --threshold 0.5 \
+  --output-mode kafka \
+  --starting-offsets latest \
+  --checkpoint-dir data_lake/checkpoints/logs_only_alerts_demo</code></pre>
+
+    <p>
+      Terminal này đọc topic <code>train-ticket-logs</code>, tính feature theo window,
+      predict anomaly probability, rồi ghi alert vào <code>train-ticket-alerts</code>.
+    </p>
+
+    <h3>Terminal 2 - Kafka alert consumer</h3>
+    <pre><code>cd ~/kafka
+bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic train-ticket-alerts \
+  --from-beginning</code></pre>
+
+    <p>Terminal này sẽ hiện JSON alert khi Spark ghi kết quả sang topic alert.</p>
+
+    <h3>Terminal 3 - Replay logs vào Kafka</h3>
+    <pre><code>cd /mnt/d/projects/big-data
+python scripts/produce_logs_to_kafka.py \
+  --limit 2000 \
+  --sleep-seconds 0.001</code></pre>
+
+    <p>
+      Producer mặc định đọc file log structured của case
+      <code>case_01_admin_basic_info_spring_1_5_22</code> và gửi vào topic
+      <code>train-ticket-logs</code>.
+    </p>
+
+    <h2>5. Kết quả kỳ vọng</h2>
+    <p>Terminal 2 sẽ hiện alert JSON có dạng:</p>
+
+    <pre><code>{
+  "service_name": "ts-admin-basic-info-service",
+  "window_start": "2022-07-08 16:01:00",
+  "window_end": "2022-07-08 16:02:00",
+  "model": "logs_only_logistic_regression",
+  "probability": 0.976018129536878,
+  "threshold": 0.5,
+  "alert": "anomaly",
+  "log_count": 884.0,
+  "error_count": 0.0,
+  "warn_count": 0.0,
+  "info_count": 884.0,
+  "unique_event_id_count": 52.0,
+  "span_reported_count": 468.0,
+  "top_event_frequency": 884.0,
+  "template_entropy": 0.0
+}</code></pre>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Thành phần</th>
+          <th>Vai trò</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>produce_logs_to_kafka.py</code></td>
+          <td>Đọc structured CSV log và replay từng dòng thành JSON event vào Kafka.</td>
+        </tr>
+        <tr>
+          <td><code>train-ticket-logs</code></td>
+          <td>Input topic chứa log events realtime.</td>
+        </tr>
+        <tr>
+          <td><code>logs_only_alerts.py</code></td>
+          <td>Spark Structured Streaming job: parse JSON, tạo feature window, load model artifact, predict.</td>
+        </tr>
+        <tr>
+          <td><code>train-ticket-alerts</code></td>
+          <td>Output topic chứa anomaly alerts.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>6. Chế độ debug console</h2>
+    <p>
+      Nếu muốn xem cả normal và anomaly ngay trên Terminal 1, dùng console mode.
+      Chế độ này không ghi vào topic <code>train-ticket-alerts</code>.
+    </p>
+
+    <pre><code>cd /mnt/d/projects/big-data
+bash scripts/run_logs_only_streaming_alerts.sh \
+  --threshold 0.5 \
+  --output-mode console \
+  --emit-all \
+  --starting-offsets latest \
+  --checkpoint-dir data_lake/checkpoints/logs_only_alerts_demo_console</code></pre>
+
+    <div class="note warn">
+      <strong>Lưu ý:</strong> Nếu chạy <code>--output-mode console</code>, Kafka consumer ở Terminal 2
+      sẽ không thấy alert vì job chỉ in ra console. Muốn đẩy alert sang topic thì phải dùng
+      <code>--output-mode kafka</code>.
+    </div>
+
+    <h2>7. Xử lý lỗi thường gặp</h2>
+    <ul>
+      <li>
+        <strong>Consumer không thấy alert:</strong> kiểm tra Terminal 1 có dùng
+        <code>--output-mode kafka</code> không. Console mode không ghi alert topic.
+      </li>
+      <li>
+        <strong>Không thấy row nào:</strong> dùng checkpoint mới hoặc đổi
+        <code>--starting-offsets earliest</code> để đọc lại message cũ.
+      </li>
+      <li>
+        <strong>Cần chắc chắn có alert:</strong> hạ threshold xuống <code>0.01</code>
+        trong lúc demo; sau đó giải thích threshold thực nghiệm của logs-only baseline là <code>0.96</code>.
+      </li>
+      <li>
+        <strong>Checkpoint bị state cũ:</strong> đổi sang checkpoint mới, ví dụ
+        <code>data_lake/checkpoints/logs_only_alerts_demo_2</code>.
+      </li>
+      <li>
+        <strong>Cần đọc message cũ trong topic:</strong> dùng <code>--starting-offsets earliest</code>
+        và checkpoint mới.
+      </li>
+    </ul>
+
+    <h2>8. Nội dung đưa vào báo cáo</h2>
+    <p>
+      Demo Kafka logs-only là phần mở rộng realtime của pipeline batch. Pipeline chính vẫn là
+      bronze/silver/gold + model training + dashboard. Streaming demo chứng minh model artifact
+      có thể được tái sử dụng cho inference gần realtime trên telemetry mới.
+    </p>
+    <ul>
+      <li>Kafka đóng vai trò message broker nhận log events realtime.</li>
+      <li>Spark Structured Streaming đóng vai trò online feature engineering và inference.</li>
+      <li>Model artifact logs-only Logistic Regression được load từ <code>reports/models/artifacts</code>.</li>
+      <li>Alert JSON gồm service, time window, probability, threshold và các feature logs-only.</li>
+      <li>Bản demo dùng static dataset để replay thành stream, vì dataset gốc không phải live telemetry.</li>
+    </ul>
+  </main>
+</body>
+</html>

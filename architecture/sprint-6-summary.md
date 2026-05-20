@@ -27,6 +27,13 @@ Dashboard/notebook:
 - `reports/dashboard/dashboard_summary.md`
 - `reports/dashboard/README.md`
 
+Streaming demo:
+
+- `scripts/produce_logs_to_kafka.py`
+- `scripts/run_logs_only_streaming_alerts.sh`
+- `src/streaming/logs_only_alerts.py`
+- `architecture/kafka-logs-only-demo.html`
+
 ## Pipeline Tong
 
 Chay end-to-end bang mot lenh:
@@ -132,6 +139,81 @@ Notebook demo:
 notebooks/sprint6_dashboard.md
 ```
 
+## Kafka Logs-Only Realtime Demo
+
+Ben canh batch pipeline chinh, Sprint 6 da bo sung demo realtime logs-only bang Kafka va Spark Structured Streaming.
+
+Muc tieu demo:
+
+- Replay structured logs tu dataset Train-Ticket vao Kafka topic `train-ticket-logs`.
+- Spark Structured Streaming doc topic nay, parse JSON log events va aggregate thanh window 60s.
+- Tao logs-only features: `log_count`, `error_count`, `warn_count`, `info_count`, `unique_event_id_count`, `span_reported_count`, `top_event_frequency`, `template_entropy`.
+- Load model artifact `reports/models/artifacts/baseline_logs_only_logistic_regression`.
+- Neu anomaly probability vuot threshold thi ghi alert JSON sang Kafka topic `train-ticket-alerts`.
+
+Tai lieu demo HTML:
+
+```text
+architecture/kafka-logs-only-demo.html
+```
+
+Chay demo bang 3 terminal:
+
+Terminal 1 - Spark streaming alert job:
+
+```bash
+cd /mnt/d/projects/big-data
+bash scripts/run_logs_only_streaming_alerts.sh \
+  --threshold 0.5 \
+  --output-mode kafka \
+  --starting-offsets latest \
+  --checkpoint-dir data_lake/checkpoints/logs_only_alerts_demo
+```
+
+Terminal 2 - consume alert:
+
+```bash
+cd ~/kafka
+bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic train-ticket-alerts \
+  --from-beginning
+```
+
+Terminal 3 - replay logs:
+
+```bash
+cd /mnt/d/projects/big-data
+python scripts/produce_logs_to_kafka.py \
+  --limit 2000 \
+  --sleep-seconds 0.001
+```
+
+Che do debug console:
+
+```bash
+bash scripts/run_logs_only_streaming_alerts.sh \
+  --threshold 0.5 \
+  --output-mode console \
+  --emit-all \
+  --starting-offsets latest \
+  --checkpoint-dir data_lake/checkpoints/logs_only_alerts_demo_console
+```
+
+Luu y quan trong:
+
+- `--output-mode console` chi in ket qua ra Terminal 1, khong ghi sang topic `train-ticket-alerts`.
+- Muon Terminal consumer thay alert thi phai dung `--output-mode kafka`.
+- Neu can doc lai message cu trong Kafka topic, dung `--starting-offsets earliest` kem checkpoint moi.
+- Streaming job dung `top_event_frequency = log_count` lam proxy trong realtime path, vi Spark Structured Streaming khong cho join hai streaming aggregates trong `update` mode.
+
+Ket qua demo da quan sat:
+
+- Spark streaming doc duoc Kafka topic `train-ticket-logs`.
+- Console debug da in duoc scored windows voi `alert: anomaly`.
+- Vi du probability quan sat duoc: `0.9760` voi threshold `0.01` trong debug run.
+- Output alert JSON gom `service_name`, `window_start`, `window_end`, `model`, `probability`, `threshold`, `alert` va cac logs-only features.
+
 ## Ket Qua Ky Vong
 
 Ket qua tot nhat hien tai nen hien tren dashboard:
@@ -196,8 +278,9 @@ Ket qua validation/model chinh:
 | Co dashboard assets generator | Done qua `src/reports/build_dashboard_assets.py` |
 | Co dashboard snapshot trong `reports/dashboard` | Done |
 | Da chay end-to-end trong WSL | Done qua `reports/models/pipeline.log` |
+| Co demo Kafka logs-only realtime alert | Done qua `scripts/produce_logs_to_kafka.py`, `src/streaming/logs_only_alerts.py`, `architecture/kafka-logs-only-demo.html` |
 
-Ket luan: Sprint 6 da Done. Co the dung `reports/models/pipeline.log` va `reports/dashboard/dashboard_summary.md` lam bang chung cho bao cao/demo.
+Ket luan: Sprint 6 da Done. Co the dung `reports/models/pipeline.log`, `reports/dashboard/dashboard_summary.md` va `architecture/kafka-logs-only-demo.html` lam bang chung cho bao cao/demo.
 
 ## Hardening Sau Sprint 6
 
@@ -211,6 +294,7 @@ Da bo sung cac muc ky thuat de project chac hon:
 | Schema validation | `src/etl/validate_schemas.py`, `scripts/validate_schemas.sh` |
 | CI toi thieu | `.github/workflows/ci.yml` |
 | Streaming replay demo | `scripts/demo_streaming_replay.py`, `architecture/streaming-demo.md` |
+| Kafka logs-only realtime alert demo | `scripts/produce_logs_to_kafka.py`, `src/streaming/logs_only_alerts.py`, `scripts/run_logs_only_streaming_alerts.sh`, `architecture/kafka-logs-only-demo.html` |
 
 Luu y: sau khi them `validate_schemas` va model artifact saving, nen chay lai `bash scripts/run_pipeline.sh` mot lan trong WSL de tao log moi va model artifact folder.
 
@@ -246,3 +330,13 @@ Ket qua:
   - F1-score: `0.1121`.
 
 Canh bao `Failed to load implementation from dev.ludovic.netlib.blas...` chi la Spark/BLAS native warning, khong lam task fail.
+
+## Noi Dung Nen Ghi Vao Bao Cao
+
+- Project chinh la batch Big Data pipeline tren Spark theo kien truc bronze/silver/gold.
+- Sprint 6 tu dong hoa pipeline bang `scripts/run_pipeline.sh` va Airflow DAG, giup chay lai silver -> gold -> validation -> training -> dashboard bang mot luong thong nhat.
+- Dashboard assets trong `reports/dashboard` dung de bao cao ket qua model, confusion matrix va best threshold.
+- Model artifact saving cho phep tach training va inference: model train batch duoc luu trong `reports/models/artifacts/`, sau do co the load lai cho realtime demo.
+- Kafka logs-only demo la phan mo rong realtime: static logs duoc replay thanh stream, Spark Structured Streaming tao feature theo window va sinh anomaly alert.
+- Alert output co dang JSON, gom service, time window, probability, threshold, label alert va cac feature logs-only de giai thich.
+- Gioi han can neu ro: demo realtime moi la logs-only, chua phai fusion realtime logs+metrics+traces; `top_event_frequency` trong realtime path dung proxy `log_count` de tranh stream-stream aggregate join.

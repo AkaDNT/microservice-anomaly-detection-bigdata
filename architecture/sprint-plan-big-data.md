@@ -37,16 +37,16 @@ Quy uoc runtime:
 
 Tinh den `2026-05-19`:
 
-| Sprint | Trang thai | Ket qua chinh |
-|---|---|---|
-| Sprint 0 | Done | Da chot bai toan, dataset, don vi phan tich theo service-level time window va kien truc bronze/silver/gold. |
-| Sprint 1 | Done | Da tao project structure, data lake local, scripts scan/smoke read va inventory dataset. |
-| Sprint 2 | Done | Da build silver logs, metrics, spans, trace_edges, anomalies; silver anomalies da bo sung inferred service va trace_id. |
-| Sprint 3 | Done | Da build gold `window_features` 60s; relaxed label 120s tao 401,806 rows voi 191 anomaly windows. |
-| Sprint 4 | Done | Da train Logistic Regression va Random Forest cho logs-only, metrics-only, traces-only; co threshold tuning va feature importance. |
-| Sprint 5 | Done | Fusion + graph da vuot baseline don nguon: LR `selected_logs_metrics_graph`, ratio 50:1, F1 0.1121. |
-| Sprint 6 | Done | Da chay end-to-end pipeline trong WSL; co Airflow DAG, runtime log va dashboard assets trong `reports/dashboard`. |
-| Sprint 7 | Pending | Bao cao, slide va dong goi nop bai. |
+| Sprint   | Trang thai | Ket qua chinh                                                                                                                      |
+| -------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Sprint 0 | Done       | Da chot bai toan, dataset, don vi phan tich theo service-level time window va kien truc bronze/silver/gold.                        |
+| Sprint 1 | Done       | Da tao project structure, data lake local, scripts scan/smoke read va inventory dataset.                                           |
+| Sprint 2 | Done       | Da build silver logs, metrics, spans, trace_edges, anomalies; silver anomalies da bo sung inferred service va trace_id.            |
+| Sprint 3 | Done       | Da build gold `window_features` 60s; relaxed label 120s tao 401,806 rows voi 191 anomaly windows.                                  |
+| Sprint 4 | Done       | Da train Logistic Regression va Random Forest cho logs-only, metrics-only, traces-only; co threshold tuning va feature importance. |
+| Sprint 5 | Done       | Fusion + graph da vuot baseline don nguon: LR `selected_logs_metrics_graph`, ratio 50:1, F1 0.1121.                                |
+| Sprint 6 | Done       | Da chay end-to-end pipeline trong WSL; co Airflow DAG, runtime log, dashboard assets va Kafka logs-only realtime alert demo.       |
+| Sprint 7 | Pending    | Bao cao, slide va dong goi nop bai.                                                                                                |
 
 Ket qua baseline tot nhat hien tai:
 
@@ -495,12 +495,12 @@ Deliverables:
 
 Ket qua lan chay dau:
 
-| Algorithm | Feature set | Best F1 | Precision | Recall | Ket luan |
-|---|---|---:|---:|---:|---|
-| Logistic Regression | logs_metrics_traces | 0.0558 | 0.0324 | 0.2000 | Chua vuot baseline don nguon |
-| Logistic Regression | logs_metrics_traces_graph | 0.0533 | 0.0308 | 0.2000 | Graph chua cai thien |
-| Random Forest | logs_metrics_traces | 0.0113 | 0.0057 | 0.7000 | False positive cao |
-| Random Forest | logs_metrics_traces_graph | 0.0101 | 0.0051 | 0.7000 | Graph chua cai thien |
+| Algorithm           | Feature set               | Best F1 | Precision | Recall | Ket luan                     |
+| ------------------- | ------------------------- | ------: | --------: | -----: | ---------------------------- |
+| Logistic Regression | logs_metrics_traces       |  0.0558 |    0.0324 | 0.2000 | Chua vuot baseline don nguon |
+| Logistic Regression | logs_metrics_traces_graph |  0.0533 |    0.0308 | 0.2000 | Graph chua cai thien         |
+| Random Forest       | logs_metrics_traces       |  0.0113 |    0.0057 | 0.7000 | False positive cao           |
+| Random Forest       | logs_metrics_traces_graph |  0.0101 |    0.0051 | 0.7000 | Graph chua cai thien         |
 
 Baseline don nguon tot nhat la Logistic Regression `metrics-only` voi F1 `0.0890`.
 
@@ -512,13 +512,13 @@ Vong toi uu da them sau lan chay dau:
 
 Ket qua sau toi uu:
 
-| Algorithm | Feature set | Negative ratio | Best F1 | Precision | Recall | TP | FP | FN | Ket luan |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---|
-| Logistic Regression | selected_logs_metrics_graph | 50:1 | 0.1121 | 0.0779 | 0.2000 | 6 | 71 | 24 | Tot nhat, vuot baseline |
-| Logistic Regression | selected_logs_metrics_trace_latency | 50:1 | 0.0710 | 0.0432 | 0.2000 | 6 | 133 | 24 | Chua vuot baseline |
-| Logistic Regression | logs_metrics | 50:1 | 0.0654 | 0.0345 | 0.6333 | 19 | 532 | 11 | Recall tot nhung FP cao |
-| Logistic Regression | selected_logs_metrics_graph | 20:1 | 0.0530 | 0.0277 | 0.6000 | 18 | 631 | 12 | FP tang, khong nen dung |
-| Random Forest | selected_logs_metrics_trace_latency | 20:1 | 0.0212 | 0.0107 | 0.9333 | 28 | 2,579 | 2 | Recall cao nhung FP qua lon |
+| Algorithm           | Feature set                         | Negative ratio | Best F1 | Precision | Recall |  TP |    FP |  FN | Ket luan                    |
+| ------------------- | ----------------------------------- | -------------: | ------: | --------: | -----: | --: | ----: | --: | --------------------------- |
+| Logistic Regression | selected_logs_metrics_graph         |           50:1 |  0.1121 |    0.0779 | 0.2000 |   6 |    71 |  24 | Tot nhat, vuot baseline     |
+| Logistic Regression | selected_logs_metrics_trace_latency |           50:1 |  0.0710 |    0.0432 | 0.2000 |   6 |   133 |  24 | Chua vuot baseline          |
+| Logistic Regression | logs_metrics                        |           50:1 |  0.0654 |    0.0345 | 0.6333 |  19 |   532 |  11 | Recall tot nhung FP cao     |
+| Logistic Regression | selected_logs_metrics_graph         |           20:1 |  0.0530 |    0.0277 | 0.6000 |  18 |   631 |  12 | FP tang, khong nen dung     |
+| Random Forest       | selected_logs_metrics_trace_latency |           20:1 |  0.0212 |    0.0107 | 0.9333 |  28 | 2,579 |   2 | Recall cao nhung FP qua lon |
 
 Output du kien:
 
@@ -576,6 +576,11 @@ Da lam:
   - `reports/dashboard/model_comparison.csv`
   - `reports/dashboard/dashboard_summary.md`
   - `reports/dashboard/README.md`
+- Tao Kafka logs-only realtime alert demo:
+  - `scripts/produce_logs_to_kafka.py`
+  - `scripts/run_logs_only_streaming_alerts.sh`
+  - `src/streaming/logs_only_alerts.py`
+  - `architecture/kafka-logs-only-demo.html`
 - Dashboard generator doc duoc `baseline_summary.json`, `fusion_summary.json` va lich su `train_fusion_*.log` de khong mat ket qua tot khi file summary bi ghi de.
 - Pipeline tong mac dinh chay fusion cau hinh tot nhat Sprint 5: Logistic Regression `selected_logs_metrics_graph`, ratio `50:1`.
 - Da chay thanh cong `bash scripts/run_pipeline.sh` trong WSL:
@@ -618,8 +623,9 @@ Task chi tiet:
   - Bang so sanh model.
   - Confusion matrix.
 - Neu co thoi gian, demo Kafka/Flink:
-  - Replay mot file log vao Kafka topic.
-  - Spark/Flink doc stream va tinh log count theo window.
+  - Replay mot file log vao Kafka topic - Done voi `scripts/produce_logs_to_kafka.py`.
+  - Spark doc stream va tinh logs-only features theo window - Done voi `src/streaming/logs_only_alerts.py`.
+  - Load model artifact logs-only va ghi alert sang Kafka topic - Done voi `train-ticket-alerts`.
   - Trinh bay nhu phan mo rong streaming, khong phai thanh phan bat buoc.
 
 Deliverables:
@@ -629,32 +635,35 @@ Deliverables:
 - Script chay pipeline bang mot lenh - Done qua `scripts/run_pipeline.sh`.
 - Dashboard-ready CSV/Markdown generator - Done qua `src/reports/build_dashboard_assets.py`.
 - Dashboard snapshot trong `reports/dashboard` - Done.
+- Kafka logs-only realtime alert demo - Done qua `architecture/kafka-logs-only-demo.html`.
 - Anh chup man hinh pipeline va dashboard cho bao cao - Co the chup tu `reports/models/pipeline.log` va `reports/dashboard/dashboard_summary.md`.
 
 Ket qua pipeline WSL:
 
-| Task | Duration |
-|---|---:|
-| `scan_dataset` | 9s |
-| `build_silver` | 209s |
-| `validate_silver` | 45s |
-| `build_gold` | 77s |
-| `validate_gold` | 30s |
-| `train_baselines` | 79s |
-| `train_fusion` | 53s |
-| `build_dashboard_assets` | 0s |
+| Task                     | Duration |
+| ------------------------ | -------: |
+| `scan_dataset`           |       9s |
+| `build_silver`           |     209s |
+| `validate_silver`        |      45s |
+| `build_gold`             |      77s |
+| `validate_gold`          |      30s |
+| `train_baselines`        |      79s |
+| `train_fusion`           |      53s |
+| `build_dashboard_assets` |       0s |
 
 Ket qua sau pipeline:
 
 - Gold `window_features`: 401,806 rows, 191 anomaly windows.
 - Fusion best trong pipeline: LR `selected_logs_metrics_graph`, ratio `50:1`, threshold `0.99`, F1 `0.1121`.
 - Dashboard generator ghi `reports/dashboard/dashboard_summary.md` va `reports/dashboard/model_comparison_20260519_161147.csv`; `model_comparison.csv` snapshot truoc do van duoc giu lai.
+- Kafka logs-only streaming demo da doc duoc topic `train-ticket-logs`, score duoc window logs-only va sinh JSON alert co `probability`, `threshold`, `alert` va cac feature giai thich.
 
 Tieu chi hoan thanh:
 
 - Co the chay lai pipeline tu dau bang mot DAG hoac mot lenh tong - Done, da chay WSL thanh cong.
 - Co dashboard/notebook de trinh bay ket qua truc quan - Done.
 - Co log runtime cua tung buoc - Done trong `scripts/run_pipeline.sh`.
+- Co demo realtime Kafka logs-only de minh hoa inference gan realtime - Done.
 
 Cach chay nhanh:
 
@@ -667,6 +676,34 @@ Neu chi muon build dashboard tu ket qua da co:
 
 ```bash
 python src/reports/build_dashboard_assets.py
+```
+
+Cach demo Kafka logs-only realtime alert:
+
+```bash
+# Terminal 1
+bash scripts/run_logs_only_streaming_alerts.sh \
+  --threshold 0.5 \
+  --output-mode kafka \
+  --starting-offsets latest \
+  --checkpoint-dir data_lake/checkpoints/logs_only_alerts_demo
+
+# Terminal 2
+bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic train-ticket-alerts \
+  --from-beginning
+
+# Terminal 3
+python scripts/produce_logs_to_kafka.py \
+  --limit 2000 \
+  --sleep-seconds 0.001
+```
+
+Tai lieu demo HTML:
+
+```text
+architecture/kafka-logs-only-demo.html
 ```
 
 ## Sprint 7 - Bao Cao, Slide Va Dong Goi Nop Bai
@@ -738,7 +775,7 @@ Tieu chi hoan thanh:
 
 ## Backlog Mo Rong Neu Con Thoi Gian
 
-- Them Apache Kafka de replay telemetry nhu stream - Co demo JSONL replay trong `scripts/demo_streaming_replay.py` va huong dan `architecture/streaming-demo.md`.
+- Them Apache Kafka de replay telemetry nhu stream - Done voi logs-only realtime alert demo trong `architecture/kafka-logs-only-demo.html`.
 - Them Apache Flink de tinh online window features - Van la optional extension, da co sketch streaming source.
 - Them Apache Iceberg de quan ly bang lakehouse tot hon.
 - Thu nghiem nhieu kich thuoc window: 30s, 60s, 120s.
@@ -763,14 +800,15 @@ Tieu chi hoan thanh:
 
 Nhung muc nay khong bat buoc cho pipeline batch chinh, nhung giup project chac hon khi nop va bao ve:
 
-| Hang muc | Trang thai | Artifact |
-|---|---|---|
-| Unit test tu dong | Done | `tests/test_dashboard_assets.py` |
-| Airflow retry/alert/timeout | Done | `airflow/dags/train_ticket_pipeline.py` |
-| Model artifact saving | Done | `src/models/train_fusion.py`, output `reports/models/artifacts/` khi train |
-| Schema validation nghiem ngat hon | Done | `src/etl/validate_schemas.py`, `scripts/validate_schemas.sh` |
-| CI/CD toi thieu | Done | `.github/workflows/ci.yml` |
-| Streaming demo nhe | Done | `scripts/demo_streaming_replay.py`, `architecture/streaming-demo.md` |
+| Hang muc                          | Trang thai | Artifact                                                                                                                                                       |
+| --------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit test tu dong                 | Done       | `tests/test_dashboard_assets.py`                                                                                                                               |
+| Airflow retry/alert/timeout       | Done       | `airflow/dags/train_ticket_pipeline.py`                                                                                                                        |
+| Model artifact saving             | Done       | `src/models/train_fusion.py`, output `reports/models/artifacts/` khi train                                                                                     |
+| Schema validation nghiem ngat hon | Done       | `src/etl/validate_schemas.py`, `scripts/validate_schemas.sh`                                                                                                   |
+| CI/CD toi thieu                   | Done       | `.github/workflows/ci.yml`                                                                                                                                     |
+| Streaming demo nhe                | Done       | `scripts/demo_streaming_replay.py`, `architecture/streaming-demo.md`                                                                                           |
+| Kafka logs-only realtime alert    | Done       | `scripts/produce_logs_to_kafka.py`, `src/streaming/logs_only_alerts.py`, `scripts/run_logs_only_streaming_alerts.sh`, `architecture/kafka-logs-only-demo.html` |
 
 Can chay lai sau hardening:
 
@@ -793,40 +831,24 @@ Lan chay moi da co:
 - Dashboard CSV moi trong `reports/dashboard/`.
 - Fusion best giu nguyen F1 `0.1121`.
 
-## Phan Cong Vai Tro Trong Nhom
+## Noi Dung Can Dua Vao Bao Cao Sprint 6
 
-Neu nhom co 3 thanh vien:
-
-- Thanh vien 1: Data engineering
-  - Data lake.
-  - Spark ETL.
-  - Silver layer.
-- Thanh vien 2: Feature engineering va modeling
-  - Window features.
-  - Graph features.
-  - Baseline va proposed model.
-- Thanh vien 3: Orchestration, dashboard va report
-  - Airflow.
-  - Superset/Zeppelin.
-  - Bao cao, slide, demo.
-
-Neu nhom co 4 thanh vien:
-
-- Thanh vien 1: Logs + anomalies.
-- Thanh vien 2: Metrics + traces.
-- Thanh vien 3: Feature engineering + models.
-- Thanh vien 4: Airflow + dashboard + report integration.
+- Orchestration: pipeline duoc gom lai bang `scripts/run_pipeline.sh` va Airflow DAG, gom scan dataset, build silver, validate silver, build gold, validate gold, train baselines, train fusion va build dashboard assets.
+- Dashboard: `src/reports/build_dashboard_assets.py` tong hop ket qua model thanh CSV/Markdown trong `reports/dashboard`, dung cho bang so sanh model va confusion matrix.
+- Model artifact: training job luu model vao `reports/models/artifacts/`, giup tach buoc train batch va buoc inference.
+- Realtime extension: Kafka logs-only demo replay static structured logs thanh stream, Spark Structured Streaming aggregate theo window 60s, load logs-only Logistic Regression model va publish anomaly alert sang `train-ticket-alerts`.
+- Giai thich gioi han: streaming demo la logs-only de phu hop quy mo project va thoi gian demo; fusion realtime logs+metrics+traces van la huong mo rong.
 
 ## Rủi Ro Va Cach Xu Ly
 
-| Rui ro | Tac dong | Cach xu ly |
-|---|---|---|
-| Spark chay cham tren may ca nhan | Tre tien do | Xu ly theo subset case truoc, cache it, ghi Parquet trung gian |
-| Metrics JSON qua lon hoac nhieu series nhieu | Ton RAM | Loc metric quan trong, explode tung file, ghi Parquet ngay |
-| Label anomaly tu TXT khong ro | Ket qua nhieu nhieu | Dung strict/relaxed window va giai thich trong bao cao |
-| GraphX kho cai hoac kho chay | Tre sprint model | Dung Spark SQL tinh graph features lightweight |
-| Airflow nang | Mat thoi gian setup | Lam DAG toi thieu hoac script orchestration thay the |
-| Superset setup loi | Khong co dashboard | Dung Zeppelin/Jupyter notebook va anh chup ket qua |
+| Rui ro                                       | Tac dong            | Cach xu ly                                                     |
+| -------------------------------------------- | ------------------- | -------------------------------------------------------------- |
+| Spark chay cham tren may ca nhan             | Tre tien do         | Xu ly theo subset case truoc, cache it, ghi Parquet trung gian |
+| Metrics JSON qua lon hoac nhieu series nhieu | Ton RAM             | Loc metric quan trong, explode tung file, ghi Parquet ngay     |
+| Label anomaly tu TXT khong ro                | Ket qua nhieu nhieu | Dung strict/relaxed window va giai thich trong bao cao         |
+| GraphX kho cai hoac kho chay                 | Tre sprint model    | Dung Spark SQL tinh graph features lightweight                 |
+| Airflow nang                                 | Mat thoi gian setup | Lam DAG toi thieu hoac script orchestration thay the           |
+| Superset setup loi                           | Khong co dashboard  | Dung Zeppelin/Jupyter notebook va anh chup ket qua             |
 
 ## Definition Of Done Toan Do An
 
