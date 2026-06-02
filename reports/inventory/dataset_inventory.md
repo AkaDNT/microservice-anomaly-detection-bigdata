@@ -1,6 +1,6 @@
 # Dataset Inventory
 
-Generated at: 2026-05-19 22:07:27 +0700
+Generated at: 2026-05-31 12:04:41 +0700
 
 Raw root: `data/raw/train-ticket`
 

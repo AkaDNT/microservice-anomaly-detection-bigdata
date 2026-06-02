@@ -1,0 +1,79 @@
+flowchart LR
+    %% This diagram matches the project pipeline:
+    %% raw Jaeger trace JSON -> silver.spans -> silver.trace_edges -> gold graph features.
+
+    subgraph Raw["Raw Jaeger trace JSON"]
+        T["trace_id = T1"]
+        P["processes map<br/>p1 -> admin-order-api<br/>p2 -> order-service<br/>p3 -> payment-service<br/>p4 -> ticket-info-service"]
+        S0["span A<br/>spanID=A<br/>processID=p1<br/>references=[]"]
+        S1["span B<br/>spanID=B<br/>processID=p2<br/>references=[A]"]
+        S2["span C<br/>spanID=C<br/>processID=p3<br/>references=[B]"]
+        S3["span D<br/>spanID=D<br/>processID=p4<br/>references=[B]"]
+    end
+
+    subgraph SilverSpans["Silver table: data_lake/silver/spans"]
+        R0["T1 | A | parent=null | admin-order-api"]
+        R1["T1 | B | parent=A | order-service"]
+        R2["T1 | C | parent=B | payment-service"]
+        R3["T1 | D | parent=B | ticket-info-service"]
+    end
+
+    subgraph Join["Parent-child join"]
+        J["Join within the same trace_id<br/>child.parent_span_id = parent.span_id<br/><br/>source_service = parent.service_name<br/>target_service = child.service_name"]
+    end
+
+    subgraph Edges["Silver table: data_lake/silver/trace_edges"]
+        E1["admin-order-api -> order-service<br/>duration_ms=45 | is_error=false"]
+        E2["order-service -> payment-service<br/>duration_ms=32 | is_error=false"]
+        E3["order-service -> ticket-info-service<br/>duration_ms=88 | is_error=true"]
+    end
+
+    subgraph Window["60-second service window"]
+        W["case_id + service_name + window_start + window_end"]
+    end
+
+    subgraph Gold["Gold graph features in data_lake/gold/window_features"]
+        F1["For source service<br/>out_degree = distinct target_service<br/>weighted_call_count = edge count<br/>avg_edge_latency_ms = avg duration<br/>max_edge_latency_ms = max duration<br/>error_edge_count = sum is_error<br/>unique_peer_service_count = distinct target_service"]
+        F2["For target service<br/>in_degree = distinct source_service"]
+    end
+
+    T --> S0
+    T --> S1
+    T --> S2
+    T --> S3
+    P -. "processID -> serviceName" .-> S0
+    P -. "processID -> serviceName" .-> S1
+    P -. "processID -> serviceName" .-> S2
+    P -. "processID -> serviceName" .-> S3
+
+    S0 --> R0
+    S1 --> R1
+    S2 --> R2
+    S3 --> R3
+
+    R0 --> J
+    R1 --> J
+    R2 --> J
+    R3 --> J
+
+    J --> E1
+    J --> E2
+    J --> E3
+
+    E1 --> W
+    E2 --> W
+    E3 --> W
+    W --> F1
+    W --> F2
+
+    classDef raw fill:#eef2ff,stroke:#4f46e5,color:#111827
+    classDef silver fill:#eff6ff,stroke:#2563eb,color:#111827
+    classDef edge fill:#fff7ed,stroke:#ea580c,color:#111827
+    classDef gold fill:#ecfdf5,stroke:#059669,color:#111827
+    classDef join fill:#f9fafb,stroke:#6b7280,color:#111827
+
+    class T,P,S0,S1,S2,S3 raw
+    class R0,R1,R2,R3 silver
+    class J join
+    class E1,E2,E3 edge
+    class W,F1,F2 gold

@@ -5,6 +5,7 @@
   "bronze_root": "data_lake/bronze/train-ticket",
   "silver_root": "data_lake/silver",
   "gold_root": "data_lake/gold",
+  "dataset_timezone": "Asia/Shanghai",
   "default_window_seconds": 60,
   "relaxed_label_seconds": 120,
   "debug_cases": [

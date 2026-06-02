@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="820" viewBox="0 0 1800 820">
+  <defs>
+    <style>
+      .title { font: 700 30px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 16px Arial, sans-serif; fill: #4b5563; }
+      .group-title { font: 700 18px Arial, sans-serif; fill: #111827; }
+      .text { font: 15px Arial, sans-serif; fill: #1f2937; }
+      .small { font: 13px Arial, sans-serif; fill: #4b5563; }
+      .raw { fill: #eef2ff; stroke: #4f46e5; stroke-width: 2; rx: 8; }
+      .silver { fill: #eff6ff; stroke: #2563eb; stroke-width: 2; rx: 8; }
+      .join { fill: #f9fafb; stroke: #6b7280; stroke-width: 2; rx: 8; }
+      .edge { fill: #fff7ed; stroke: #ea580c; stroke-width: 2; rx: 8; }
+      .gold { fill: #ecfdf5; stroke: #059669; stroke-width: 2; rx: 8; }
+      .group { fill: #ffffff; stroke: #d1d5db; stroke-width: 2; rx: 12; }
+      .arrow { stroke: #374151; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #6b7280; stroke-width: 2; fill: none; stroke-dasharray: 7 6; marker-end: url(#arrow-gray); }
+    </style>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#374151"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="11" markerHeight="11" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+
+  <rect width="1800" height="820" fill="#ffffff"/>
+  <text x="44" y="52" class="title">Graph features from service-call relationships</text>
+  <text x="44" y="80" class="subtitle">Project flow: Raw Jaeger trace JSON -> silver.spans -> silver.trace_edges -> 60-second gold graph features.</text>
+
+  <rect x="40" y="120" width="405" height="600" class="group"/>
+  <text x="64" y="154" class="group-title">1. Raw Jaeger trace JSON</text>
+  <text x="64" y="180" class="small">A trace contains spans and a processes map.</text>
+
+  <rect x="70" y="215" width="345" height="72" class="raw"/>
+  <text x="92" y="244" class="text">processes</text>
+  <text x="92" y="268" class="small">p1=admin-order-api, p2=order-service</text>
+
+  <rect x="70" y="320" width="160" height="74" class="raw"/>
+  <text x="92" y="348" class="text">Span A</text>
+  <text x="92" y="372" class="small">spanID=A, p1</text>
+
+  <rect x="255" y="320" width="160" height="74" class="raw"/>
+  <text x="277" y="348" class="text">Span B</text>
+  <text x="277" y="372" class="small">parent=A, p2</text>
+
+  <rect x="70" y="430" width="160" height="74" class="raw"/>
+  <text x="92" y="458" class="text">Span C</text>
+  <text x="92" y="482" class="small">parent=B, p3</text>
+
+  <rect x="255" y="430" width="160" height="74" class="raw"/>
+  <text x="277" y="458" class="text">Span D</text>
+  <text x="277" y="482" class="small">parent=B, p4</text>
+
+  <path d="M230 357 L255 357" class="arrow"/>
+  <path d="M335 394 C300 420 205 420 150 430" class="arrow"/>
+  <path d="M335 394 L335 430" class="arrow"/>
+  <text x="214" y="410" class="small">CHILD_OF references</text>
+
+  <rect x="505" y="120" width="360" height="600" class="group"/>
+  <text x="529" y="154" class="group-title">2. Silver spans</text>
+  <text x="529" y="180" class="small">Stored at data_lake/silver/spans.</text>
+
+  <rect x="535" y="235" width="300" height="60" class="silver"/>
+  <text x="557" y="271" class="text">T1 | A | parent=null | admin-order-api</text>
+
+  <rect x="535" y="325" width="300" height="60" class="silver"/>
+  <text x="557" y="361" class="text">T1 | B | parent=A | order-service</text>
+
+  <rect x="535" y="415" width="300" height="60" class="silver"/>
+  <text x="557" y="451" class="text">T1 | C | parent=B | payment-service</text>
+
+  <rect x="535" y="505" width="300" height="60" class="silver"/>
+  <text x="557" y="541" class="text">T1 | D | parent=B | ticket-info-service</text>
+
+  <path d="M415 251 C455 251 480 265 535 265" class="dash"/>
+  <path d="M415 357 C455 357 480 355 535 355" class="dash"/>
+  <path d="M230 467 C360 467 430 445 535 445" class="dash"/>
+  <path d="M415 467 C455 467 480 535 535 535" class="dash"/>
+  <text x="455" y="218" class="small">processID -> serviceName</text>
+
+  <rect x="925" y="120" width="330" height="600" class="group"/>
+  <text x="949" y="154" class="group-title">3. Parent-child join</text>
+  <text x="949" y="180" class="small">Join spans within the same trace_id.</text>
+
+  <rect x="955" y="282" width="270" height="190" class="join"/>
+  <text x="977" y="318" class="text">child.parent_span_id</text>
+  <text x="977" y="342" class="text">= parent.span_id</text>
+  <text x="977" y="382" class="small">source_service = parent.service_name</text>
+  <text x="977" y="408" class="small">target_service = child.service_name</text>
+  <text x="977" y="444" class="small">Keep duration_ms and is_error</text>
+
+  <path d="M835 265 C880 265 910 320 955 335" class="arrow"/>
+  <path d="M835 355 L955 365" class="arrow"/>
+  <path d="M835 445 C890 445 905 430 955 420" class="arrow"/>
+  <path d="M835 535 C900 535 910 470 955 450" class="arrow"/>
+
+  <rect x="1315" y="120" width="430" height="600" class="group"/>
+  <text x="1339" y="154" class="group-title">4. Silver trace_edges</text>
+  <text x="1339" y="180" class="small">Stored at data_lake/silver/trace_edges.</text>
+
+  <rect x="1350" y="235" width="360" height="72" class="edge"/>
+  <text x="1372" y="263" class="text">admin-order-api -> order-service</text>
+  <text x="1372" y="288" class="small">duration_ms=45, is_error=false</text>
+
+  <rect x="1350" y="345" width="360" height="72" class="edge"/>
+  <text x="1372" y="373" class="text">order-service -> payment-service</text>
+  <text x="1372" y="398" class="small">duration_ms=32, is_error=false</text>
+
+  <rect x="1350" y="455" width="360" height="72" class="edge"/>
+  <text x="1372" y="483" class="text">order-service -> ticket-info-service</text>
+  <text x="1372" y="508" class="small">duration_ms=88, is_error=true</text>
+
+  <path d="M1225 345 C1265 345 1290 271 1350 271" class="arrow"/>
+  <path d="M1225 377 L1350 381" class="arrow"/>
+  <path d="M1225 430 C1285 430 1290 491 1350 491" class="arrow"/>
+
+  <rect x="132" y="748" width="1536" height="48" class="gold"/>
+  <text x="156" y="778" class="text">Gold aggregation per 60-second window: out_degree, in_degree, weighted_call_count, avg_edge_latency_ms, max_edge_latency_ms, error_edge_count, unique_peer_service_count</text>
+  <path d="M1530 527 C1530 650 900 650 900 748" class="arrow"/>
+</svg>

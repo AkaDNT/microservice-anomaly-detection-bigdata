@@ -1,18 +1,25 @@
 import argparse
+import json
 from pathlib import Path
 
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 
-def build_spark() -> SparkSession:
+def build_spark(timezone: str = "Asia/Shanghai") -> SparkSession:
     return (
         SparkSession.builder.appName("train-ticket-validate-silver")
         .master("local[*]")
         .config("spark.driver.memory", "4g")
         .config("spark.sql.shuffle.partitions", "8")
+        .config("spark.sql.session.timeZone", timezone)
         .getOrCreate()
     )
+
+
+def load_config(path: str) -> dict:
+    with open(path, "r", encoding="utf-8") as file:
+        return json.load(file)
 
 
 def validate_table(spark: SparkSession, silver_root: Path, table: str) -> None:
@@ -36,11 +43,13 @@ def validate_table(spark: SparkSession, silver_root: Path, table: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate silver parquet tables.")
+    parser.add_argument("--config", default="configs/project_config.json")
     parser.add_argument("--silver-root", default="data_lake/silver")
     parser.add_argument("--tables", default="logs,metrics,spans,trace_edges,anomalies")
     args = parser.parse_args()
 
-    spark = build_spark()
+    config = load_config(args.config)
+    spark = build_spark(timezone=config.get("dataset_timezone", "Asia/Shanghai"))
     spark.sparkContext.setLogLevel("WARN")
 
     silver_root = Path(args.silver_root)

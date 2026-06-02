@@ -8,7 +8,7 @@ from pyspark.sql import functions as F
 from pyspark.sql import types as T
 
 
-def build_spark(app_name: str = "train-ticket-build-silver") -> SparkSession:
+def build_spark(app_name: str = "train-ticket-build-silver", timezone: str = "Asia/Shanghai") -> SparkSession:
     return (
         SparkSession.builder.appName(app_name)
         .master("local[2]")
@@ -16,6 +16,7 @@ def build_spark(app_name: str = "train-ticket-build-silver") -> SparkSession:
         .config("spark.default.parallelism", "4")
         .config("spark.sql.shuffle.partitions", "4")
         .config("spark.sql.files.maxPartitionBytes", "16m")
+        .config("spark.sql.session.timeZone", timezone)
         .getOrCreate()
     )
 
@@ -360,8 +361,11 @@ def build_anomalies(spark: SparkSession, raw_root: Path, cases: List[str], silve
     raw_lower = F.lower(F.col("value"))
     inferred_service = (
         F.when(raw_lower.contains("admin basic info") | raw_lower.contains("adminbasic"), F.lit("ts-admin-basic-info-service"))
+        .when(raw_lower.contains("admin order") | raw_lower.contains("adminorder") | raw_lower.contains("ts-admin-order-service"), F.lit("ts-admin-order-service"))
         .when(raw_lower.contains("admin travel") | raw_lower.contains("admintravel"), F.lit("ts-admin-travel-service"))
         .when(raw_lower.contains("admin user") | raw_lower.contains("adminuser"), F.lit("ts-admin-user-service"))
+        .when(raw_lower.contains("food map") | raw_lower.contains("foodmap") | raw_lower.contains("food-map"), F.lit("ts-food-map-service"))
+        .when(raw_lower.contains("food service") | raw_lower.contains("food-service") | raw_lower.contains("foodsearch"), F.lit("ts-food-service"))
         .when(raw_lower.contains("preserve other service") | raw_lower.contains("preserve other"), F.lit("ts-preserve-other-service"))
         .when(raw_lower.contains("preserve service") | raw_lower.contains("preserve."), F.lit("ts-preserve-service"))
         .when(raw_lower.contains("order other service") | raw_lower.contains("orderother"), F.lit("ts-order-other-service"))
@@ -429,7 +433,7 @@ def main() -> None:
     print(f"cases={cases}")
     print(f"source={args.source}")
 
-    spark = build_spark()
+    spark = build_spark(timezone=config.get("dataset_timezone", "Asia/Shanghai"))
     spark.sparkContext.setLogLevel("WARN")
 
     if args.source in ("all", "logs"):

@@ -11,13 +11,14 @@ from pyspark.sql import functions as F
 KEY_COLS = ["case_id", "service_name", "window_start", "window_end"]
 
 
-def build_spark(app_name: str = "train-ticket-build-gold") -> SparkSession:
+def build_spark(app_name: str = "train-ticket-build-gold", timezone: str = "Asia/Shanghai") -> SparkSession:
     return (
         SparkSession.builder.appName(app_name)
         .master("local[2]")
         .config("spark.driver.memory", "4g")
         .config("spark.default.parallelism", "4")
         .config("spark.sql.shuffle.partitions", "4")
+        .config("spark.sql.session.timeZone", timezone)
         .getOrCreate()
     )
 
@@ -266,6 +267,7 @@ def main() -> None:
     silver_root = Path(args.silver_root or config["silver_root"])
     gold_root = Path(args.gold_root or config["gold_root"])
     window_seconds = args.window_seconds or int(config.get("default_window_seconds", 60))
+    dataset_timezone = config.get("dataset_timezone", "Asia/Shanghai")
     relaxed_label_seconds = args.relaxed_label_seconds
     if relaxed_label_seconds is None:
         relaxed_label_seconds = int(config.get("relaxed_label_seconds", 120))
@@ -274,8 +276,9 @@ def main() -> None:
     print(f"gold_root={gold_root}")
     print(f"window_seconds={window_seconds}")
     print(f"relaxed_label_seconds={relaxed_label_seconds}")
+    print(f"dataset_timezone={dataset_timezone}")
 
-    spark = build_spark()
+    spark = build_spark(timezone=dataset_timezone)
     spark.sparkContext.setLogLevel("WARN")
 
     frames = [

@@ -1,22 +1,30 @@
 import argparse
+import json
 from pathlib import Path
 
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 
-def build_spark() -> SparkSession:
+def build_spark(timezone: str = "Asia/Shanghai") -> SparkSession:
     return (
         SparkSession.builder.appName("train-ticket-validate-gold")
         .master("local[2]")
         .config("spark.driver.memory", "4g")
         .config("spark.sql.shuffle.partitions", "4")
+        .config("spark.sql.session.timeZone", timezone)
         .getOrCreate()
     )
 
 
+def load_config(path: str) -> dict:
+    with open(path, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate gold window feature table.")
+    parser.add_argument("--config", default="configs/project_config.json")
     parser.add_argument("--gold-root", default="data_lake/gold")
     parser.add_argument("--table", default="window_features")
     args = parser.parse_args()
@@ -25,7 +33,8 @@ def main() -> None:
     if not path.exists():
         raise FileNotFoundError(f"Missing gold table: {path}")
 
-    spark = build_spark()
+    config = load_config(args.config)
+    spark = build_spark(timezone=config.get("dataset_timezone", "Asia/Shanghai"))
     spark.sparkContext.setLogLevel("WARN")
 
     df = spark.read.parquet(str(path))
