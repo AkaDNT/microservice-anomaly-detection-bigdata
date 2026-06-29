@@ -1,7 +1,5 @@
 # Train-Ticket Telemetry Anomaly Platform
 
-> Enterprise-grade Big Data pipeline for detecting anomalies in microservice systems from logs, metrics, distributed traces, and service-call graph features.
-
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Apache Spark](https://img.shields.io/badge/Apache%20Spark-3.5.3-E25A1C?style=flat-square&logo=apachespark&logoColor=white)
 ![Apache Airflow](https://img.shields.io/badge/Apache%20Airflow-2.9.3-017CEE?style=flat-square&logo=apacheairflow&logoColor=white)
@@ -49,12 +47,12 @@ raw telemetry
 
 The Train-Ticket dataset represents a realistic microservice system with many interacting services. The pipeline processes four telemetry families:
 
-| Source | Format | What It Contributes |
-|---|---|---|
-| Structured logs | CSV | event templates, severity counts, span references, message frequency |
-| Monitoring metrics | JSON | CPU, memory, network, node, and container-level signals |
-| Distributed traces | Jaeger JSON | spans, service latency, parent-child relationships, trace topology |
-| Potential anomalies | TXT annotations | weak labels for anomaly windows and affected service context |
+| Source              | Format          | What It Contributes                                                  |
+| ------------------- | --------------- | -------------------------------------------------------------------- |
+| Structured logs     | CSV             | event templates, severity counts, span references, message frequency |
+| Monitoring metrics  | JSON            | CPU, memory, network, node, and container-level signals              |
+| Distributed traces  | Jaeger JSON     | spans, service latency, parent-child relationships, trace topology   |
+| Potential anomalies | TXT annotations | weak labels for anomaly windows and affected service context         |
 
 The normalized silver layer currently validates at the scale of millions of records, including logs, metrics, spans, and trace edges.
 
@@ -76,24 +74,24 @@ Gold features are built at the `(service_name, window_start, window_end)` level 
 
 The modeling layer compares single-source baselines against multi-source fusion approaches:
 
-| Family | Examples |
-|---|---|
-| Baseline models | logs-only, metrics-only, traces-only |
-| Fusion models | logs + metrics, selected logs + metrics, trace-latency variants |
-| Graph-enhanced models | selected logs + metrics + service-call graph features |
-| Algorithms | Logistic Regression, Random Forest, optional local experiments with XGBoost/LightGBM |
+| Family                | Examples                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------ |
+| Baseline models       | logs-only, metrics-only, traces-only                                                 |
+| Fusion models         | logs + metrics, selected logs + metrics, trace-latency variants                      |
+| Graph-enhanced models | selected logs + metrics + service-call graph features                                |
+| Algorithms            | Logistic Regression, Random Forest, optional local experiments with XGBoost/LightGBM |
 
 The current tracked dashboard summary identifies a graph-enhanced Logistic Regression configuration as the top F1 entry:
 
-| Metric | Value |
-|---|---:|
-| Model | `selected_logs_metrics_graph` |
-| Negative/positive ratio | `50:1` |
-| Tuned threshold | `0.99` |
-| Precision | `0.0779` |
-| Recall | `0.2000` |
-| F1-score | `0.1121` |
-| Confusion matrix | TP `6`, FP `71`, FN `24`, TN `133035` |
+| Metric                  |                                 Value |
+| ----------------------- | ------------------------------------: |
+| Model                   |         `selected_logs_metrics_graph` |
+| Negative/positive ratio |                                `50:1` |
+| Tuned threshold         |                                `0.99` |
+| Precision               |                              `0.0779` |
+| Recall                  |                              `0.2000` |
+| F1-score                |                              `0.1121` |
+| Confusion matrix        | TP `6`, FP `71`, FN `24`, TN `133035` |
 
 The dataset is heavily imbalanced, so the project emphasizes precision, recall, F1-score, threshold tuning, and confusion-matrix analysis instead of accuracy alone.
 
@@ -202,11 +200,11 @@ scan_dataset
 
 Key operational controls:
 
-| Variable | Purpose |
-|---|---|
-| `TRAIN_TICKET_PROJECT_DIR` | Project root used by Airflow tasks |
-| `SPARK_DRIVER_MEMORY` | Spark driver memory, default `6g` |
-| `FUSION_ARGS` | Feature set, algorithm, and sampling controls for fusion training |
+| Variable                   | Purpose                                                           |
+| -------------------------- | ----------------------------------------------------------------- |
+| `TRAIN_TICKET_PROJECT_DIR` | Project root used by Airflow tasks                                |
+| `SPARK_DRIVER_MEMORY`      | Spark driver memory, default `6g`                                 |
+| `FUSION_ARGS`              | Feature set, algorithm, and sampling controls for fusion training |
 
 ## Realtime Streaming Demo
 
@@ -261,15 +259,15 @@ The project includes multiple layers of verification:
 
 ## Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Distributed processing | Apache Spark, PySpark, Spark SQL |
-| ML training | Spark MLlib, scikit-learn-compatible local experiments |
-| Orchestration | Apache Airflow, shell pipeline |
-| Streaming | Apache Kafka, Spark Structured Streaming |
-| Storage format | Local lakehouse layout, Parquet-oriented silver/gold outputs |
-| Reporting | CSV, Markdown dashboard summaries, generated comparison assets |
-| Quality | Python unittest, schema validation scripts, GitHub Actions |
+| Layer                  | Technology                                                     |
+| ---------------------- | -------------------------------------------------------------- |
+| Distributed processing | Apache Spark, PySpark, Spark SQL                               |
+| ML training            | Spark MLlib, scikit-learn-compatible local experiments         |
+| Orchestration          | Apache Airflow, shell pipeline                                 |
+| Streaming              | Apache Kafka, Spark Structured Streaming                       |
+| Storage format         | Local lakehouse layout, Parquet-oriented silver/gold outputs   |
+| Reporting              | CSV, Markdown dashboard summaries, generated comparison assets |
+| Quality                | Python unittest, schema validation scripts, GitHub Actions     |
 
 ## Roadmap
 
