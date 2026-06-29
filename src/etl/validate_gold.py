@@ -6,6 +6,9 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 
+KEY_COLUMNS = {"case_id", "service_name", "window_start", "window_end"}
+
+
 def build_spark(timezone: str = "Asia/Shanghai") -> SparkSession:
     return (
         SparkSession.builder.appName("train-ticket-validate-gold")
@@ -46,6 +49,34 @@ def main() -> None:
         F.max("window_end").alias("max_window_end"),
     ).show(truncate=False)
     df.select("case_id", "service_name", "window_start", "window_end", "label").show(20, truncate=False)
+
+    numeric_feature_columns = [
+        name
+        for name, dtype in df.dtypes
+        if name not in KEY_COLUMNS | {"label"} and dtype in {"bigint", "int", "double", "float", "long"}
+    ]
+    if numeric_feature_columns:
+        checks = []
+        for column in numeric_feature_columns:
+            checks.append(F.sum((F.col(column) != 0).cast("long")).alias(f"{column}__nonzero"))
+            checks.append(F.min(column).alias(f"{column}__min"))
+            checks.append(F.max(column).alias(f"{column}__max"))
+
+        stats = df.agg(*checks).first().asDict()
+        all_zero_columns = [
+            column
+            for column in numeric_feature_columns
+            if int(stats.get(f"{column}__nonzero") or 0) == 0
+        ]
+        if all_zero_columns:
+            print("All-zero numeric feature columns:")
+            for column in all_zero_columns:
+                print(
+                    f"- {column}: "
+                    f"min={stats.get(f'{column}__min')}, "
+                    f"max={stats.get(f'{column}__max')}"
+                )
+            raise ValueError(f"Gold table has all-zero numeric feature columns: {all_zero_columns}")
 
     spark.stop()
 

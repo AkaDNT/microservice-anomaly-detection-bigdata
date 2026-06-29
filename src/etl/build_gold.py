@@ -6,6 +6,7 @@ from typing import List
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
+from pyspark.sql.window import Window
 
 
 KEY_COLS = ["case_id", "service_name", "window_start", "window_end"]
@@ -89,6 +90,31 @@ def build_metric_features(spark: SparkSession, silver_root: Path, window_seconds
         metrics.withColumn("service_name", metric_service_col())
         .where(F.col("service_name").isNotNull() & (F.col("service_name") != ""))
     )
+    series_cols = [
+        "case_id",
+        "service_name",
+        "metric_name",
+        "container",
+        "pod",
+        "namespace",
+        "node",
+        "instance",
+        "source_file",
+    ]
+    series_window = Window.partitionBy(*series_cols).orderBy("timestamp_unix")
+    metrics = (
+        metrics.withColumn("prev_timestamp_unix", F.lag("timestamp_unix").over(series_window))
+        .withColumn("prev_value", F.lag("value").over(series_window))
+        .withColumn("delta_seconds", F.col("timestamp_unix") - F.col("prev_timestamp_unix"))
+        .withColumn("delta_value", F.col("value") - F.col("prev_value"))
+        .withColumn(
+            "metric_rate",
+            F.when(
+                (F.col("delta_seconds") > 0) & (F.col("delta_value") >= 0),
+                F.col("delta_value") / F.col("delta_seconds"),
+            ),
+        )
+    )
     metrics = with_window(metrics, "timestamp", window_seconds)
 
     return metrics.groupBy(KEY_COLS).agg(
@@ -102,12 +128,7 @@ def build_metric_features(spark: SparkSession, silver_root: Path, window_seconds
         F.max(F.when(F.col("metric_name") == "container_network_transmit_packets_total", F.col("value"))).alias("network_max"),
         F.avg(F.when(F.col("metric_name") == "node_memory_MemAvailable_bytes", F.col("value"))).alias("node_memory_available_mean"),
         F.avg(F.when(F.col("metric_name") == "node_memory_MemTotal_bytes", F.col("value"))).alias("node_memory_total_mean"),
-        F.avg(
-            F.when(
-                F.col("metric_name") == "node_namespace_pod_container_container_cpu_usage_seconds_total_sum_irate",
-                F.col("value"),
-            )
-        ).alias("cpu_rate_mean"),
+        F.avg(F.when(F.col("metric_name") == "container_cpu_usage_seconds_total", F.col("metric_rate"))).alias("cpu_rate_mean"),
     )
 
 

@@ -55,25 +55,42 @@ def parse_events(kafka_df):
 
 def build_log_features(events, window_seconds: int, watermark: str):
     base = events.withWatermark("event_timestamp", watermark)
+    event_ids = F.collect_list("event_id")
 
     features = base.groupBy("service_name", F.window("event_timestamp", f"{window_seconds} seconds")).agg(
         F.count("*").cast("double").alias("log_count"),
         F.sum((F.col("level") == "ERROR").cast("int")).cast("double").alias("error_count"),
         F.sum((F.col("level") == "WARN").cast("int")).cast("double").alias("warn_count"),
         F.sum((F.col("level") == "INFO").cast("int")).cast("double").alias("info_count"),
-        F.approx_count_distinct("event_id").cast("double").alias("unique_event_id_count"),
         F.sum(F.col("content").contains("Span reported").cast("int")).cast("double").alias("span_reported_count"),
+        event_ids.alias("_event_ids"),
+    )
+
+    unique_event_ids = F.array_distinct("_event_ids")
+    event_count_for = lambda event_id: F.size(F.filter(F.col("_event_ids"), lambda item: item == event_id)).cast("double")
+    top_event_frequency = F.aggregate(
+        unique_event_ids,
+        F.lit(0.0),
+        lambda acc, event_id: F.greatest(acc, event_count_for(event_id)),
+    )
+    template_entropy = F.aggregate(
+        unique_event_ids,
+        F.lit(0.0),
+        lambda acc, event_id: acc
+        + F.when(
+            event_count_for(event_id) > 0,
+            -(event_count_for(event_id) / F.col("log_count")) * F.log(event_count_for(event_id) / F.col("log_count")),
+        ).otherwise(F.lit(0.0)),
     )
 
     return (
         features
-        # Streaming update mode cannot join two streaming aggregates. For the
-        # realtime demo, use log_count as a conservative upper-bound proxy.
-        .withColumn("top_event_frequency", F.col("log_count"))
-        .withColumn("template_entropy", F.lit(0.0))
+        .withColumn("unique_event_id_count", F.size(unique_event_ids).cast("double"))
+        .withColumn("top_event_frequency", top_event_frequency)
+        .withColumn("template_entropy", template_entropy)
         .withColumn("window_start", F.col("window.start"))
         .withColumn("window_end", F.col("window.end"))
-        .drop("window")
+        .drop("window", "_event_ids")
     )
 
 

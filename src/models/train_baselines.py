@@ -51,7 +51,7 @@ BASELINES: Dict[str, List[str]] = {
     ],
 }
 
-THRESHOLDS = [round(value / 100.0, 2) for value in range(1, 100)]
+THRESHOLDS = [round(value / 100.0, 2) for value in range(1, 100)] + [0.995, 0.999]
 
 
 def build_spark(app_name: str = "train-ticket-train-baselines") -> SparkSession:
@@ -80,24 +80,55 @@ def resolve_train_cases(all_cases: List[str], explicit_cases: str | None) -> Lis
     return [case for case in all_cases if any(case.startswith(prefix) for prefix in DEFAULT_TRAIN_CASE_PREFIXES)]
 
 
-def add_class_weights(df: DataFrame) -> Tuple[DataFrame, Dict[str, int]]:
+def add_class_weights(df: DataFrame, mode: str) -> Tuple[DataFrame, Dict[str, int | float | str]]:
     counts = {row["label"]: row["count"] for row in df.groupBy("label").count().collect()}
     negative_count = int(counts.get(0, 0))
     positive_count = int(counts.get(1, 0))
+    summary: Dict[str, int | float | str] = {
+        "mode": mode,
+        "negative_count": negative_count,
+        "positive_count": positive_count,
+    }
+    if mode == "none":
+        return df.withColumn("class_weight", F.lit(1.0)), summary
+    if mode != "balanced":
+        raise ValueError(f"Unsupported class weight mode: {mode}")
     if positive_count == 0 or negative_count == 0:
-        return df.withColumn("class_weight", F.lit(1.0)), {
-            "negative_count": negative_count,
-            "positive_count": positive_count,
-        }
+        return df.withColumn("class_weight", F.lit(1.0)), summary
 
     total_count = negative_count + positive_count
     negative_weight = total_count / (2.0 * negative_count)
     positive_weight = total_count / (2.0 * positive_count)
+    summary["negative_weight"] = negative_weight
+    summary["positive_weight"] = positive_weight
     weighted = df.withColumn(
         "class_weight",
         F.when(F.col("label") == 1, F.lit(positive_weight)).otherwise(F.lit(negative_weight)),
     )
-    return weighted, {"negative_count": negative_count, "positive_count": positive_count}
+    return weighted, summary
+
+
+def downsample_negatives(df: DataFrame, negative_positive_ratio: int, seed: int = 42) -> DataFrame:
+    if negative_positive_ratio <= 0:
+        return df
+
+    counts = {row["label"]: row["count"] for row in df.groupBy("label").count().collect()}
+    negative_count = int(counts.get(0, 0))
+    positive_count = int(counts.get(1, 0))
+    if positive_count == 0 or negative_count == 0:
+        return df
+
+    target_negative_count = positive_count * negative_positive_ratio
+    if target_negative_count >= negative_count:
+        return df
+
+    positives = df.where(F.col("label") == 1)
+    negatives = df.where(F.col("label") == 0).sample(
+        withReplacement=False,
+        fraction=target_negative_count / negative_count,
+        seed=seed,
+    )
+    return positives.unionByName(negatives)
 
 
 def confusion_metrics(predictions: DataFrame, prediction_col: str = "prediction") -> Dict[str, float | int]:
@@ -266,6 +297,18 @@ def main() -> None:
         action="store_true",
         help="Also train Random Forest single-source baselines. Slower, but useful for Sprint 4 comparison.",
     )
+    parser.add_argument(
+        "--negative-positive-ratio",
+        type=int,
+        default=50,
+        help="Downsample train negatives to this ratio per positive. Use 0 to disable.",
+    )
+    parser.add_argument(
+        "--class-weight-mode",
+        choices=["none", "balanced"],
+        default="none",
+        help="Use no class weights by default after downsampling; choose balanced for higher recall and more false positives.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -290,17 +333,28 @@ def main() -> None:
 
     train_df = df.where(F.col("case_id").isin(train_cases)).cache()
     test_df = df.where(F.col("case_id").isin(test_cases)).cache()
-    train_df, train_counts = add_class_weights(train_df)
+    original_train_rows = train_df.count()
+    original_train_counts = {row["label"]: row["count"] for row in train_df.groupBy("label").count().collect()}
+    train_df = downsample_negatives(train_df, args.negative_positive_ratio).cache()
+    train_df, train_counts = add_class_weights(train_df, args.class_weight_mode)
     test_df = test_df.withColumn("class_weight", F.lit(1.0))
+    train_rows = train_df.count()
+    test_rows = test_df.count()
+    test_label_counts = {row["label"]: row["count"] for row in test_df.groupBy("label").count().collect()}
 
     split_summary = {
         "split_strategy": "case_id split",
         "train_cases": train_cases,
         "test_cases": test_cases,
-        "train_rows": train_df.count(),
-        "test_rows": test_df.count(),
+        "original_train_rows": original_train_rows,
+        "original_train_label_counts": original_train_counts,
+        "negative_positive_ratio": args.negative_positive_ratio,
+        "class_weight_mode": args.class_weight_mode,
+        "train_rows": train_rows,
+        "test_rows": test_rows,
         "train_label_counts": train_counts,
-        "test_label_counts": {row["label"]: row["count"] for row in test_df.groupBy("label").count().collect()},
+        "test_label_counts": test_label_counts,
+        "test_positive_rate": float(test_label_counts.get(1, 0) / test_rows) if test_rows else 0.0,
     }
     print(json.dumps(split_summary, indent=2, sort_keys=True))
 

@@ -241,7 +241,7 @@ bin/kafka-topics.sh \
     <h3>Terminal 1 - Spark streaming alert job</h3>
     <pre><code>cd /mnt/d/projects/big-data
 bash scripts/run_logs_only_streaming_alerts.sh \
-  --threshold 0.5 \
+  --threshold 0.2 \
   --output-mode kafka \
   --starting-offsets latest \
   --checkpoint-dir data_lake/checkpoints/logs_only_alerts_demo</code></pre>
@@ -263,7 +263,7 @@ bin/kafka-console-consumer.sh \
     <h3>Terminal 3 - Replay logs vào Kafka</h3>
     <pre><code>cd /mnt/d/projects/big-data
 python scripts/produce_logs_to_kafka.py \
-  --limit 2000 \
+  --limit 40000 \
   --sleep-seconds 0.001</code></pre>
 
     <p>
@@ -271,6 +271,9 @@ python scripts/produce_logs_to_kafka.py \
       <code>case_01_admin_basic_info_spring_1_5_22</code> và gửi vào topic
       <code>train-ticket-logs</code>.
     </p>
+
+    <p>Terminal 3 sẽ hiện dòng xác nhận:</p>
+    <pre><code>sent=40000 topic=train-ticket-logs service_name=ts-admin-basic-info-service</code></pre>
 
     <h2>5. Kết quả kỳ vọng</h2>
     <p>Terminal 2 sẽ hiện alert JSON có dạng:</p>
@@ -328,7 +331,7 @@ python scripts/produce_logs_to_kafka.py \
 
     <pre><code>cd /mnt/d/projects/big-data
 bash scripts/run_logs_only_streaming_alerts.sh \
-  --threshold 0.5 \
+  --threshold 0.2 \
   --output-mode console \
   --emit-all \
   --starting-offsets latest \
